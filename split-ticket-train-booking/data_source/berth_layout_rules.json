@@ -1,0 +1,69 @@
+{
+  "SL": {
+    "name": "Sleeper Class",
+    "berths_per_coach": 72,
+    "bay_size": 8,
+    "berth_types_per_bay": [
+      "LB",
+      "MB",
+      "UB",
+      "LB",
+      "MB",
+      "UB",
+      "SL",
+      "SU"
+    ],
+    "notes": "9 bays of 8 berths each (6 main + 2 side) = 72 berths"
+  },
+  "3A": {
+    "name": "AC 3-Tier",
+    "berths_per_coach": 64,
+    "bay_size": 8,
+    "berth_types_per_bay": [
+      "LB",
+      "MB",
+      "UB",
+      "LB",
+      "MB",
+      "UB",
+      "SL",
+      "SU"
+    ],
+    "notes": "8 bays of 8 berths each = 64 berths"
+  },
+  "2A": {
+    "name": "AC 2-Tier",
+    "berths_per_coach": 46,
+    "bay_size": 6,
+    "berth_types_per_bay": [
+      "LB",
+      "UB",
+      "LB",
+      "UB",
+      "SL",
+      "SU"
+    ],
+    "notes": "berths in bays of 6 (4 main + 2 side)"
+  },
+  "1A": {
+    "name": "AC First Class",
+    "berths_per_coach": 18,
+    "bay_size": null,
+    "berth_types_per_bay": null,
+    "notes": "mix of coupes (2/4 berth cabins), varies by coach"
+  },
+  "CC": {
+    "name": "AC Chair Car",
+    "berths_per_coach": 78,
+    "bay_size": 5,
+    "berth_types_per_bay": null,
+    "notes": "seat rows, 3+2 configuration, no sleeping berths"
+  },
+  "2S": {
+    "name": "Second Seating",
+    "berths_per_coach": 108,
+    "bay_size": 5,
+    "berth_types_per_bay": null,
+    "notes": "seat rows, 3+2 configuration, unreserved/reserved variants (2S/GS)"
+  }
+}
