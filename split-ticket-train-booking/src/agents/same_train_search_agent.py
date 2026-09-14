@@ -9,18 +9,18 @@ interface so that a coordinator can run it alongside other agents with
 
 Concurrency model
 -----------------
-A* is synchronous and CPU/IO-bound, so ``propose()`` hands it to a worker
-thread with ``asyncio.to_thread`` (Python >= 3.9; the venv is 3.11). Two
-details make this actually parallel rather than nominally so:
+``propose()`` never blocks the event loop. With a :class:`SearchWorkerPool`
+the search runs in a worker process (its own store + heuristic), and
+several agents' ``propose()`` calls gathered together genuinely run in
+parallel -- measured at ~0.55-0.8x of back-to-back time. Without a pool the
+search runs in a thread via ``asyncio.to_thread``: still non-blocking, but
+because the search is pure CPU-bound Python (the DB is opened
+``immutable=1``, so no query releases the GIL) two threaded searches do
+not overlap. See ``tests/test_same_train_search_agent.py`` for numbers.
 
-* Each call opens its **own** ``RailDataStore`` connection inside the worker
-  thread via :meth:`RailDataStore.clone`. ``sqlite3`` connections are bound
-  to their creating thread and raise ``ProgrammingError`` otherwise.
-* ``sqlite3`` releases the GIL while a query executes, and A* on this data
-  is query-heavy, so two searches genuinely overlap. The pure-Python parts
-  (heap ops, dataclass construction) still serialise under the GIL, so two
-  concurrent searches take ~1.4x one search rather than 1.0x; see
-  ``tests/test_same_train_search_agent.py`` for measured numbers.
+Each thread-mode call opens its **own** ``RailDataStore`` connection via
+:meth:`RailDataStore.clone`: ``sqlite3`` connections are bound to their
+creating thread.
 
 The shared :class:`RailHeuristic` is read-mostly (its per-goal Dijkstra
 cache is filled on first use); concurrent misses at worst recompute the
@@ -38,6 +38,7 @@ from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.proposal import ItineraryProposal
 from src.search_astar import astar_search
+from src.agents.worker_pool import SearchWorkerPool
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
 from src.successors import MIN_COACH_SWITCH_MINUTES
@@ -45,14 +46,28 @@ from src.successors import MIN_COACH_SWITCH_MINUTES
 
 class SameTrainSearchAgent:
     name = "SameTrainSearchAgent"
+    search_mode = "same_train"
 
-    def __init__(self, store: RailDataStore, heuristic: RailHeuristic) -> None:
+    def __init__(
+        self,
+        store: RailDataStore,
+        heuristic: RailHeuristic,
+        pool: SearchWorkerPool | None = None,
+    ) -> None:
+        """``pool`` (recommended) runs the search in a worker process so several
+        agents can genuinely run in parallel; without it the search runs in a
+        thread, which keeps the event loop responsive but, being GIL-bound,
+        does not overlap with other searches."""
         self._store = store
         self._heuristic = heuristic
+        self._pool = pool
 
     async def propose(self, query: UserQuery) -> ItineraryProposal:
         """Search for a same-train itinerary for ``query`` without blocking the event loop."""
-        goal, stats = await asyncio.to_thread(self._search, query)
+        if self._pool is not None:
+            goal, stats = await self._pool.search(query, self.search_mode)
+        else:
+            goal, stats = await asyncio.to_thread(self._search, query)
         reason = None if goal is not None else await asyncio.to_thread(self._diagnose, query, stats)
         return ItineraryProposal.from_search(self.name, query, goal, stats, failure_reason=reason)
 

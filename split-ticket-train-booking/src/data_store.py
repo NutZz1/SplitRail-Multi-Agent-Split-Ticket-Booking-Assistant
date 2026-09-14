@@ -148,7 +148,12 @@ class RailDataStore:
             raise FileNotFoundError(f"railway.db not found at {self.db_path}")
 
         # mode=ro makes SQLite itself refuse writes on this connection.
-        uri = self.db_path.resolve().as_uri() + "?mode=ro"
+        # immutable=1 tells SQLite the file cannot change while open, so it
+        # skips per-query file locking and change detection: ~2x faster
+        # queries and no lock contention between concurrent readers. Safe
+        # because nothing writes railway.db while the application runs
+        # (rebuilds via data_source/build_sqlite_db.py happen offline).
+        uri = self.db_path.resolve().as_uri() + "?mode=ro&immutable=1"
         self._conn: sqlite3.Connection = sqlite3.connect(uri, uri=True)
         self._conn.row_factory = sqlite3.Row
 
@@ -237,6 +242,24 @@ class RailDataStore:
             ORDER BY train_number
             """,
             (station_code,),
+        ).fetchall()
+        return [r["train_number"] for r in rows]
+
+    def get_trains_running_through(self, station_code: str, date_str: str) -> list[str]:
+        """Train numbers that stop at ``station_code`` AND run on ``date_str`` (``YYYY-MM-DD``).
+
+        Equivalent to filtering :meth:`get_all_trains_through_station` with
+        :meth:`runs_on_date`, in a single query. Sorted ascending.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT DISTINCT s.train_number
+            FROM schedule_stops AS s
+            JOIN train_run_dates AS d ON d.train_number = s.train_number
+            WHERE s.station_code = ? AND d.run_date = ?
+            ORDER BY s.train_number
+            """,
+            (station_code, date_str),
         ).fetchall()
         return [r["train_number"] for r in rows]
 
@@ -348,6 +371,24 @@ class RailDataStore:
             (train_number, from_station, to_station),
         ).fetchall()
         return {r["coach_code"]: r["status"] for r in rows}
+
+    def get_availability_from(self, train_number: str, from_station: str) -> dict[str, dict[str, str]]:
+        """Return ``{to_station: {coach_code: status}}`` for every bookable segment
+        starting at ``from_station`` on ``train_number`` -- one query instead of
+        one per destination. Empty dict if no data.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT to_station, coach_code, status
+            FROM seat_availability
+            WHERE train_number = ? AND from_station = ?
+            """,
+            (train_number, from_station),
+        ).fetchall()
+        out: dict[str, dict[str, str]] = {}
+        for r in rows:
+            out.setdefault(r["to_station"], {})[r["coach_code"]] = r["status"]
+        return out
 
     # -- run calendar -------------------------------------------------------
     def runs_on_date(self, train_number: str, date_str: str) -> bool:
