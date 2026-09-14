@@ -153,6 +153,16 @@ class RailDataStore:
         self._conn.row_factory = sqlite3.Row
 
     # -- lifecycle ----------------------------------------------------------
+    def clone(self) -> "RailDataStore":
+        """Open a fresh read-only connection to the same database file.
+
+        ``sqlite3`` connections are bound to the thread that created them, so
+        code that runs queries in a worker thread (e.g. an agent running A*
+        via ``asyncio.to_thread``) must use its own connection. Cloning is
+        cheap: it only opens a file handle, no data is copied.
+        """
+        return RailDataStore(self.db_path)
+
     def close(self) -> None:
         """Close the underlying connection. Safe to call more than once."""
         if self._conn is not None:
