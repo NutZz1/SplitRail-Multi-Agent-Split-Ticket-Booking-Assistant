@@ -151,6 +151,52 @@ def _class_allowed(cls: str | None, query: UserQuery) -> bool:
     return not query.class_is_hard_constraint or cls == query.travel_class_preference
 
 
+def _close_ticket(state: JourneyState, query: UserQuery, store: RailDataStore, stops: list[Stop]) -> Ticket:
+    """Materialise the in-progress ticket, ending at ``state.current_station``.
+
+    The ticket runs from the in-progress origin (last closed ticket's
+    destination, or the query origin) to the current station, and carries
+    the exact availability status for that (train, from, to, coach).
+    """
+    train_number = state.current_train
+    assert train_number is not None
+    origin = _ticket_origin(state, query)
+    origin_idx = _route_index(stops, origin)
+    boarded_at = (
+        stop_datetime(stops[origin_idx], query.travel_date, use_arrival=False)
+        if origin_idx is not None else None
+    )
+    status = (
+        store.get_availability(train_number, origin, state.current_station).get(state.current_coach)
+        if state.current_coach is not None else None
+    )
+    return Ticket(
+        train_number=train_number,
+        from_station=origin,
+        to_station=state.current_station,
+        coach=state.current_coach,
+        travel_class=state.current_class,
+        boarding_datetime=boarded_at if boarded_at is not None else state.arrival_datetime,
+        alighting_datetime=state.arrival_datetime,
+        status=status,
+    )
+
+
+def close_final_ticket(state: JourneyState, query: UserQuery, store: RailDataStore) -> JourneyState:
+    """Return ``state`` with its in-progress ticket closed at the current station.
+
+    Search algorithms call this on the goal state they return, so that
+    ``tickets_so_far`` describes the complete itinerary (origin ->
+    destination) rather than only the segments closed by transfers. A
+    not-yet-boarded state is returned unchanged.
+    """
+    if not state.is_boarded:
+        return state
+    stops = store.get_real_halt_stops(state.current_train)  # type: ignore[arg-type]
+    ticket = _close_ticket(state, query, store, stops)
+    return replace(state, tickets_so_far=state.tickets_so_far + (ticket,))
+
+
 # --------------------------------------------------------------------------- #
 # Public entry point
 # --------------------------------------------------------------------------- #
@@ -268,20 +314,7 @@ def _transfer_successors(state: JourneyState, query: UserQuery, store: RailDataS
     if nxt.station_code in state.visited_stations:
         return []
 
-    # Close the in-progress ticket with its exact availability status.
-    origin_stop = stops[_route_index(stops, origin)]  # type: ignore[index]
-    boarded_at = stop_datetime(origin_stop, query.travel_date, use_arrival=False)
-    closing_status = store.get_availability(train_number, origin, here.station_code).get(state.current_coach)
-    ticket = Ticket(
-        train_number=train_number,
-        from_station=origin,
-        to_station=here.station_code,
-        coach=state.current_coach,
-        travel_class=state.current_class,
-        boarding_datetime=boarded_at if boarded_at is not None else state.arrival_datetime,
-        alighting_datetime=state.arrival_datetime,
-        status=closing_status,
-    )
+    ticket = _close_ticket(state, query, store, stops)
 
     onward = store.get_availability(train_number, here.station_code, nxt.station_code)
     composition = store.get_coach_composition(train_number)
