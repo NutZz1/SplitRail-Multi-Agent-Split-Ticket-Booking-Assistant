@@ -23,3 +23,11 @@ def graph(store):
 @pytest.fixture(scope="session")
 def heuristic(graph):
     return RailHeuristic(graph)
+
+
+@pytest.fixture(scope="session")
+def mail_query():
+    """SBC -> MAS on a day 12658 runs; the canonical query for the search tests."""
+    import datetime as dt
+    from src.state import UserQuery
+    return UserQuery(origin_station="SBC", destination_station="MAS", travel_date=dt.date(2026, 9, 16), max_transfers=2)
