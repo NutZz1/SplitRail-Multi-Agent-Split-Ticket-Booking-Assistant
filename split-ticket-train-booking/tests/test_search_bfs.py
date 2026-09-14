@@ -34,11 +34,23 @@ def test_bfs_no_solution_impossible_class(store):
     assert stats.nodes_generated == 0
 
 
-def test_bfs_no_solution_unreachable_destination_searches_exhaustively(store):
+def test_bfs_no_solution_unreachable_destination_fails_fast(store):
     # 12658 is the only train boardable at SBC on the 16th and never reaches
-    # MYS, so BFS must ride every branch to MAS before concluding there is no path.
+    # MYS. The same-train generator can never change trains, so it refuses to
+    # board a train that does not reach the destination: no search happens.
     q = UserQuery("SBC", "MYS", DATE, max_transfers=2)
     goal, stats = bfs_search(q, store)
+    assert_no_solution(goal, stats, min_expanded=1)
+    assert stats.nodes_generated == 0
+
+
+def test_bfs_no_solution_searches_exhaustively_when_connection_is_missing(store):
+    # With the different-train generator, 12801 is boarded and ridden to its
+    # end (NDLS) on a Wednesday, when the connecting 12217 does not run:
+    # every branch is explored before BFS concludes there is no path.
+    from src.successors_different_train import get_successors_different_train
+    q = UserQuery("PURI", "CDG", dt.date(2026, 9, 16), max_transfers=2)
+    goal, stats = bfs_search(q, store, successors_fn=get_successors_different_train)
     assert_no_solution(goal, stats, min_expanded=50)
     assert stats.nodes_generated > 50
 

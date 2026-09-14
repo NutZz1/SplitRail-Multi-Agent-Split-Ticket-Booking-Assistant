@@ -13,6 +13,7 @@ different states, so the visited-set only removes exact duplicates.
 from __future__ import annotations
 
 import time
+from typing import Callable
 from collections import deque
 
 from src.data_store import RailDataStore
@@ -21,9 +22,17 @@ from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery, initial_state
 from src.successors import close_final_ticket, get_successors
 
+#: Signature every successor generator must satisfy.
+SuccessorsFn = Callable[[JourneyState, UserQuery, RailDataStore], list[JourneyState]]
 
-def bfs_search(query: UserQuery, store: RailDataStore) -> tuple[JourneyState | None, SearchStats]:
-    """FIFO breadth-first search. Returns ``(goal_state, stats)`` or ``(None, stats)``."""
+
+def bfs_search(
+    query: UserQuery, store: RailDataStore, successors_fn: SuccessorsFn = get_successors
+) -> tuple[JourneyState | None, SearchStats]:
+    """FIFO breadth-first search. Returns ``(goal_state, stats)`` or ``(None, stats)``.
+
+    ``successors_fn`` selects the move generator (default: same-train).
+    """
     stats = SearchStats(algorithm="BFS")
     t0 = time.perf_counter()
 
@@ -41,7 +50,7 @@ def bfs_search(query: UserQuery, store: RailDataStore) -> tuple[JourneyState | N
             return stats.path[-1], stats  # type: ignore[index]
 
         stats.nodes_expanded += 1
-        for child in get_successors(state, query, store):
+        for child in successors_fn(state, query, store):
             stats.nodes_generated += 1
             if child in visited:
                 continue

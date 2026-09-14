@@ -31,3 +31,12 @@ def mail_query():
     import datetime as dt
     from src.state import UserQuery
     return UserQuery(origin_station="SBC", destination_station="MAS", travel_date=dt.date(2026, 9, 16), max_transfers=2)
+
+
+@pytest.fixture(scope="session")
+def pool(store):
+    """One process pool for the whole session (each worker builds its own graph once)."""
+    from src.agents.worker_pool import SearchWorkerPool
+    with SearchWorkerPool(store.db_path, max_workers=2) as p:
+        p.warm_up()
+        yield p

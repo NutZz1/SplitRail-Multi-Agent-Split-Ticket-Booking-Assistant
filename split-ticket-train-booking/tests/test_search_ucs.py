@@ -39,7 +39,15 @@ def test_ucs_no_solution_impossible_class(store):
     assert_no_solution(goal, stats, min_expanded=1)
 
 
-def test_ucs_no_solution_unreachable_destination_searches_exhaustively(store):
+def test_ucs_no_solution_unreachable_destination_fails_fast(store):
     q = UserQuery("SBC", "MYS", DATE, max_transfers=2)
     goal, stats = ucs_search(q, store)
+    assert_no_solution(goal, stats, min_expanded=1)
+    assert stats.nodes_generated == 0
+
+
+def test_ucs_no_solution_searches_exhaustively_when_connection_is_missing(store):
+    from src.successors_different_train import get_successors_different_train
+    q = UserQuery("PURI", "CDG", dt.date(2026, 9, 16), max_transfers=2)
+    goal, stats = ucs_search(q, store, successors_fn=get_successors_different_train)
     assert_no_solution(goal, stats, min_expanded=50)
