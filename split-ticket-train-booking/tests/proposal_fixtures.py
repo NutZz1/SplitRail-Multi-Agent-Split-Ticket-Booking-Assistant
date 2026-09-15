@@ -52,9 +52,9 @@ def ride_with_transfer_at(store: RailDataStore, query: UserQuery, transfer_stati
         raise AssertionError(f"no coach switch at {transfer_station} leads to the destination")
     goal = close_final_ticket(state, query, store)
     stats = SearchStats(algorithm="manual", path_found=True, total_cost=goal.cumulative_time_minutes, nodes_expanded=0)
-    return ItineraryProposal.from_search("SameTrainSearchAgent", query, goal, stats)
+    return ItineraryProposal.from_search("SameTrainSearchAgent", query, [goal], stats)
 
 
 def proposal_from_goal(goal: JourneyState | None, query: UserQuery, agent_name: str, reason: str | None = None) -> ItineraryProposal:
     stats = SearchStats(algorithm="manual", path_found=goal is not None)
-    return ItineraryProposal.from_search(agent_name, query, goal, stats, failure_reason=reason)
+    return ItineraryProposal.from_search(agent_name, query, [goal] if goal is not None else [], stats, failure_reason=reason)

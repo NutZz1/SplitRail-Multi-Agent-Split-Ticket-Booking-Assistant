@@ -41,11 +41,14 @@ def test_propose_finds_sbc_to_mas(agent, mail_query):
     assert isinstance(p, ItineraryProposal)
     assert p.found and p.failure_reason is None
     assert p.agent_name == "SameTrainSearchAgent" and p.query == mail_query
-    assert p.tickets and p.tickets[0].from_station == "SBC" and p.tickets[-1].to_station == "MAS"
-    assert all(t.train_number == "12658" for t in p.tickets)
-    assert p.total_time_minutes == 340  # same optimum Step 4's A* test established
-    assert p.transfer_count == 0 and len(p.tickets) == 1
-    assert p.goal_state is not None and p.goal_state.current_station == "MAS"
+    best = p.best
+    assert best is not None and best.rank == 0 and best.agent_name == p.agent_name
+    assert best.tickets and best.tickets[0].from_station == "SBC" and best.tickets[-1].to_station == "MAS"
+    assert all(t.train_number == "12658" for t in best.tickets)
+    assert best.total_time_minutes == 340  # same optimum Step 4's A* test established
+    assert best.transfer_count == 0 and len(best.tickets) == 1
+    assert best.goal_state.current_station == "MAS"
+    assert 1 <= len(p.candidates) <= 3
     print("\n" + p.describe())
 
 
@@ -55,7 +58,7 @@ def test_search_stats_carried_through_unchanged(agent, store, heuristic, mail_qu
     for field in ("nodes_expanded", "nodes_generated", "max_frontier_size", "path_found", "total_cost", "algorithm"):
         assert getattr(p.search_stats, field) == getattr(direct, field), field
     assert p.search_stats.nodes_expanded > 0
-    assert p.search_stats.path[-1] == p.goal_state
+    assert p.search_stats.path[-1] == p.best.goal_state
 
 
 # --------------------------------------------------------------------------- #
@@ -65,8 +68,7 @@ def test_propose_impossible_class_returns_not_found(agent):
     q = UserQuery("SBC", "MAS", DATE, travel_class_preference="CC", class_is_hard_constraint=True)
     p = asyncio.run(agent.propose(q))
     assert p.found is False
-    assert p.tickets == () and p.goal_state is None
-    assert p.total_time_minutes is None and p.transfer_count is None
+    assert p.candidates == () and p.best is None
     assert isinstance(p.failure_reason, str) and p.failure_reason
     assert "CC" in p.failure_reason and "not offered" in p.failure_reason
     assert p.search_stats.path_found is False
@@ -149,7 +151,7 @@ def test_gather_two_different_queries_both_correct(agent, mail_query):
         return await asyncio.gather(agent.propose(mail_query), agent.propose(q_bad))
 
     good, bad = asyncio.run(both())
-    assert good.found and good.query == mail_query and good.total_time_minutes == 340
+    assert good.found and good.query == mail_query and good.best.total_time_minutes == 340
     assert not bad.found and bad.query == q_bad
 
 
@@ -215,4 +217,4 @@ def test_proposal_is_frozen(agent, mail_query):
 
 def test_proposal_risk_flag(agent, mail_query):
     p = asyncio.run(agent.propose(mail_query))
-    assert p.is_risky == any(t.status in {"RAC", "WAITLIST"} for t in p.tickets)
+    assert p.best.is_risky == any(t.status in {"RAC", "WAITLIST"} for t in p.best.tickets)
