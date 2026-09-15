@@ -15,7 +15,7 @@ import asyncio
 from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.proposal import ItineraryProposal
-from src.search_astar import astar_search
+from src.search_astar import astar_search_k
 from src.agents.worker_pool import SearchWorkerPool
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
@@ -23,6 +23,11 @@ from src.successors_different_train import (
     MIN_DIFFERENT_TRAIN_BUFFER_MINUTES,
     get_successors_different_train,
 )
+
+
+#: How many distinct candidate itineraries propose() returns (cheapest first).
+#: Distinctness is by leg signature (train + split stations), see src.proposal.
+K_CANDIDATES: int = 3
 
 
 class DifferentTrainSearchAgent:
@@ -46,16 +51,16 @@ class DifferentTrainSearchAgent:
     async def propose(self, query: UserQuery) -> ItineraryProposal:
         """Search for an itinerary allowing train changes, without blocking the event loop."""
         if self._pool is not None:
-            goal, stats = await self._pool.search(query, self.search_mode)
+            goals, stats = await self._pool.search(query, self.search_mode, k=K_CANDIDATES)
         else:
-            goal, stats = await asyncio.to_thread(self._search, query)
-        reason = None if goal is not None else await asyncio.to_thread(self._diagnose, query, stats)
-        return ItineraryProposal.from_search(self.name, query, goal, stats, failure_reason=reason)
+            goals, stats = await asyncio.to_thread(self._search, query)
+        reason = None if goals else await asyncio.to_thread(self._diagnose, query, stats)
+        return ItineraryProposal.from_search(self.name, query, goals, stats, failure_reason=reason)
 
     # -- worker-thread bodies (each opens its own DB connection) -------------
-    def _search(self, query: UserQuery) -> tuple[JourneyState | None, SearchStats]:
+    def _search(self, query: UserQuery) -> tuple[list[JourneyState], SearchStats]:
         with self._store.clone() as store:
-            return astar_search(query, store, self._heuristic, successors_fn=get_successors_different_train)
+            return astar_search_k(query, store, self._heuristic, k=K_CANDIDATES, successors_fn=get_successors_different_train)
 
     def _diagnose(self, query: UserQuery, stats: SearchStats) -> str:
         with self._store.clone() as store:

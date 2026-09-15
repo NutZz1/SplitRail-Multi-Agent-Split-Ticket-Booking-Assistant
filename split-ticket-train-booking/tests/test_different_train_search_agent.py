@@ -35,19 +35,20 @@ def agent(store, heuristic, pool):
 def test_propose_finds_puri_to_cdg_via_ndls(agent, store):
     p = asyncio.run(agent.propose(PURI_CDG))
     print("\n" + p.describe())
-    for t in p.tickets:
+    best = p.best
+    for t in best.tickets:
         print(f"   {t.describe()}  {t.boarding_datetime:%m-%d %H:%M} -> {t.alighting_datetime:%m-%d %H:%M}")
     assert isinstance(p, ItineraryProposal) and p.found and p.failure_reason is None
     assert p.agent_name == "DifferentTrainSearchAgent" and p.query == PURI_CDG
-    assert [t.train_number for t in p.tickets] == ["12801", "12217"]
-    assert p.tickets[0].from_station == "PURI" and p.tickets[0].to_station == "NDLS"
-    assert p.tickets[1].from_station == "NDLS" and p.tickets[1].to_station == "CDG"
-    assert p.transfer_count == 1
-    assert p.goal_state is not None and p.goal_state.current_station == "CDG"
-    assert p.goal_state.arrival_datetime == dt.datetime(2026, 9, 17, 15, 45)
+    assert [t.train_number for t in best.tickets] == ["12801", "12217"]
+    assert best.tickets[0].from_station == "PURI" and best.tickets[0].to_station == "NDLS"
+    assert best.tickets[1].from_station == "NDLS" and best.tickets[1].to_station == "CDG"
+    assert best.transfer_count == 1
+    assert best.goal_state.current_station == "CDG"
+    assert best.goal_state.arrival_datetime == dt.datetime(2026, 9, 17, 15, 45)
     # real connection time at NDLS
-    assert p.tickets[1].boarding_datetime - p.tickets[0].alighting_datetime == dt.timedelta(minutes=400)
-    for t in p.tickets:
+    assert best.tickets[1].boarding_datetime - best.tickets[0].alighting_datetime == dt.timedelta(minutes=400)
+    for t in best.tickets:
         assert t.status in {"CONFIRMED", "RAC", "WAITLIST"}
         assert t.coach is not None and t.travel_class is not None
 
@@ -62,9 +63,10 @@ def test_moving_time_is_sum_of_legs_not_layover(agent, store):
         i, j = codes.index(a), codes.index(b)
         return sum(segment_minutes(x, y) for x, y in zip(stops[i:j], stops[i + 1:j + 1]))
 
-    expected = sum(leg_minutes(t.train_number, t.from_station, t.to_station) for t in p.tickets)
-    assert p.total_time_minutes == expected
-    wall = (p.goal_state.arrival_datetime - p.tickets[0].boarding_datetime).total_seconds() / 60
+    best = p.best
+    expected = sum(leg_minutes(t.train_number, t.from_station, t.to_station) for t in best.tickets)
+    assert best.total_time_minutes == expected
+    wall = (best.goal_state.arrival_datetime - best.tickets[0].boarding_datetime).total_seconds() / 60
     assert wall > expected + 400  # layover and dwell are in wall-clock, not in g
 
 
@@ -77,8 +79,8 @@ def test_same_train_agent_cannot_solve_this_but_different_train_can(store, heuri
 
 def test_direct_route_still_found_without_a_transfer(agent, mail_query):
     p = asyncio.run(agent.propose(mail_query))
-    assert p.found and p.transfer_count == 0 and p.total_time_minutes == 340
-    assert [t.train_number for t in p.tickets] == ["12658"]
+    assert p.found and p.best.transfer_count == 0 and p.best.total_time_minutes == 340
+    assert [t.train_number for t in p.best.tickets] == ["12658"]
 
 
 def test_search_stats_carried_through_unchanged(agent, store, heuristic):
@@ -86,7 +88,7 @@ def test_search_stats_carried_through_unchanged(agent, store, heuristic):
     _, direct = astar_search(PURI_CDG, store, heuristic, successors_fn=get_successors_different_train)
     for field in ("nodes_expanded", "nodes_generated", "max_frontier_size", "path_found", "total_cost", "algorithm"):
         assert getattr(p.search_stats, field) == getattr(direct, field), field
-    assert p.search_stats.path[-1] == p.goal_state
+    assert p.search_stats.path[-1] == p.best.goal_state
     print(f"\n{p.search_stats.header()}\n{p.search_stats.row()}")
 
 
@@ -97,7 +99,7 @@ def test_no_solution_when_connection_does_not_run(agent):
     wed = UserQuery("PURI", "CDG", dt.date(2026, 9, 16), max_transfers=2)  # 12217 is Tue/Fri
     p = asyncio.run(agent.propose(wed))
     print("\n" + p.describe())
-    assert not p.found and p.tickets == () and p.goal_state is None
+    assert not p.found and p.candidates == () and p.best is None
     assert "Boarded 12801" in p.failure_reason and "no connecting train" in p.failure_reason
     assert p.search_stats.nodes_expanded > 10  # it really searched 12801's route
 
@@ -165,7 +167,7 @@ def test_same_and_different_agents_gather_in_parallel(store, heuristic, pool, ma
     assert conc < seq  # the same-train search is short; overlap is bounded by the longer one
 
     s2, d2 = asyncio.run(both(mail_query))
-    assert s2.found and d2.found and s2.total_time_minutes == d2.total_time_minutes == 340
+    assert s2.found and d2.found and s2.best.total_time_minutes == d2.best.total_time_minutes == 340
 
 
 def test_propose_does_not_block_the_event_loop(agent):

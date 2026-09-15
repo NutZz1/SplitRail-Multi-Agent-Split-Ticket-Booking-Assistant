@@ -18,7 +18,7 @@ from src.agents.seat_transfer_agent import (
     TransferFeasibilityScore,
     is_night_hour,
 )
-from src.proposal import ItineraryProposal
+from src.proposal import CandidateItinerary
 from src.state import Ticket
 from tests.proposal_fixtures import MAIL_QUERY, proposal_from_goal, ride_with_transfer_at
 
@@ -41,7 +41,7 @@ def test_is_night_hour(hour, night):
 # direct ride: nothing to score
 # --------------------------------------------------------------------------- #
 def test_direct_ride_has_no_transfers(agent, mail_proposal):
-    score = asyncio.run(agent.evaluate(mail_proposal))
+    score = asyncio.run(agent.evaluate(mail_proposal.best))
     assert isinstance(score, TransferFeasibilityScore)
     assert score.applicable and score.transfer_count == 0
     assert score.per_transfer_penalties == () and score.total_feasibility_penalty == 0.0
@@ -51,7 +51,7 @@ def test_direct_ride_has_no_transfers(agent, mail_proposal):
 # real same-train split at BNC (5-minute halt) -- also a real NIGHT transfer
 # --------------------------------------------------------------------------- #
 def test_bnc_same_train_transfer_scored(agent, store, bnc_split_proposal):
-    score = asyncio.run(agent.evaluate(bnc_split_proposal))
+    score = asyncio.run(agent.evaluate(bnc_split_proposal.best))
     print("\n" + bnc_split_proposal.describe())
     print(score.describe())
     assert score.applicable and score.transfer_count == 1
@@ -69,7 +69,7 @@ def test_bnc_same_train_transfer_scored(agent, store, bnc_split_proposal):
         pytest.fail("a coach switch to the same coach is not a transfer")
 
     # 12658 departs BNC at 23:00 -> genuine night transfer from the real timetable
-    assert bnc_split_proposal.tickets[1].boarding_datetime == dt.datetime(2026, 9, 16, 23, 0)
+    assert bnc_split_proposal.best.tickets[1].boarding_datetime == dt.datetime(2026, 9, 16, 23, 0)
     assert t["is_night"] is True and t["boarding_time"] == "23:00"
 
     assert t["penalty"] == pytest.approx(expected * COACH_DISTANCE_WEIGHT + NIGHT_TRANSFER_PENALTY)
@@ -80,7 +80,7 @@ def test_bnc_same_train_transfer_scored(agent, store, bnc_split_proposal):
 @pytest.mark.parametrize("board_class", ["SL", "2A", "1A"])
 def test_bnc_transfer_penalty_scales_with_real_coach_distance(agent, store, board_class):
     p = ride_with_transfer_at(store, MAIL_QUERY, "BNC", board_class=board_class)
-    score = asyncio.run(agent.evaluate(p))
+    score = asyncio.run(agent.evaluate(p.best))
     t = score.per_transfer_penalties[0]
     d = store.coach_distance("12658", t["coach_from"], t["coach_to"])
     print(f"\nboarded {board_class}: switch {t['coach_from']} -> {t['coach_to']} = {d} positions, penalty {t['penalty']:.0f}")
@@ -91,7 +91,7 @@ def test_bnc_transfer_penalty_scales_with_real_coach_distance(agent, store, boar
 # real different-train transfer at NDLS (daytime, 11:30)
 # --------------------------------------------------------------------------- #
 def test_ndls_different_train_transfer_scored(agent, puri_cdg_proposal):
-    score = asyncio.run(agent.evaluate(puri_cdg_proposal))
+    score = asyncio.run(agent.evaluate(puri_cdg_proposal.best))
     print("\n" + puri_cdg_proposal.describe())
     print(score.describe())
     assert score.applicable and score.transfer_count == 1
@@ -110,7 +110,7 @@ def test_real_night_transfer_exists_among_demo_trains(store, bnc_split_proposal,
 
     A cross-train one also exists in the timetable: 12609 arrives BNC 19:36 and
     12658 departs BNC 23:00 (buffer 204 min), a real night boarding."""
-    score = asyncio.run(agent.evaluate(bnc_split_proposal))
+    score = asyncio.run(agent.evaluate(bnc_split_proposal.best))
     assert score.per_transfer_penalties[0]["is_night"]
     dep_12658 = next(s for s in store.get_real_halt_stops("12658") if s.station_code == "BNC").departure
     arr_12609 = next(s for s in store.get_real_halt_stops("12609") if s.station_code == "BNC").arrival
@@ -127,9 +127,8 @@ def test_unknown_composition_is_penalised_not_zero(agent, mail_query):
         Ticket("04601", "JAT", "SMVB", "S1", "SL", when, when + dt.timedelta(hours=1), "CONFIRMED"),
         Ticket("04601", "SMVB", "UHP", "S5", "SL", when + dt.timedelta(hours=1, minutes=5), when + dt.timedelta(hours=2), "CONFIRMED"),
     )
-    goal_like = ItineraryProposal("SameTrainSearchAgent", mail_query, None, tickets, 115.0, 1, True, None,
-                                  __import__("src.search_stats", fromlist=["SearchStats"]).SearchStats())
-    score = asyncio.run(agent.evaluate(goal_like))
+    candidate = CandidateItinerary("SameTrainSearchAgent", 0, None, tickets, 115.0, 1)  # type: ignore[arg-type]
+    score = asyncio.run(agent.evaluate(candidate))
     t = score.per_transfer_penalties[0]
     assert t["coach_distance"] is None and t["note"] and "unavailable" in t["note"]
     assert t["is_night"] is False
@@ -142,7 +141,9 @@ def test_unknown_composition_is_penalised_not_zero(agent, mail_query):
 # --------------------------------------------------------------------------- #
 def test_not_applicable_when_no_solution(agent, no_solution_proposal):
     assert no_solution_proposal.found is False
-    score = asyncio.run(agent.evaluate(no_solution_proposal))
+    # per-candidate scoring: a proposal with no candidates yields no scores at all
+    assert asyncio.run(agent.evaluate_all(no_solution_proposal)) == ()
+    score = TransferFeasibilityScore.not_applicable(no_solution_proposal.agent_name)
     assert score.applicable is False
     assert score.per_transfer_penalties == () and score.total_feasibility_penalty == 0.0
     assert score.proposal_agent_name == "SameTrainSearchAgent"
@@ -150,6 +151,6 @@ def test_not_applicable_when_no_solution(agent, no_solution_proposal):
 
 
 def test_score_is_frozen(agent, mail_proposal):
-    score = asyncio.run(agent.evaluate(mail_proposal))
+    score = asyncio.run(agent.evaluate(mail_proposal.best))
     with pytest.raises(Exception):
         score.applicable = False  # type: ignore[misc]
