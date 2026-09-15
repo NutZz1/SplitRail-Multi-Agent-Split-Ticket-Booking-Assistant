@@ -62,7 +62,7 @@ from src.agents.fare_time_agent import FareTimeAgent, FareTimeScore
 from src.agents.same_train_search_agent import SameTrainSearchAgent
 from src.agents.seat_transfer_agent import SeatTransferAgent, TransferFeasibilityScore
 from src.data_store import RailDataStore
-from src.final_recommendation import FinalRecommendation, RankedItinerary
+from src.final_recommendation import FinalRecommendation, RankedItinerary, SearchEffort
 from src.proposal import CandidateItinerary, ItineraryProposal
 from src.state import UserQuery
 
@@ -105,6 +105,7 @@ class CoordinatorAgent:
         # ---- Stage 1: both searches in parallel ----------------------------
         same_query = same_train_query(query)
         same_p, diff_p = await asyncio.gather(self._same.propose(same_query), self._diff.propose(query))
+        effort = search_effort(same_p, diff_p)  # surfaced on every outcome; matters most when nothing is found
 
         if not same_p.found and not diff_p.found:
             # Short-circuit: nothing to score, Stage 2 is never entered.
@@ -115,6 +116,7 @@ class CoordinatorAgent:
                 ranked_options=(),
                 total_candidates_considered=0,
                 candidates_pruned_by_hard_constraint=0,
+                search_effort_summary=effort,
             )
 
         # CandidateItinerary.agent_name already says who produced it; reuse as-is.
@@ -137,6 +139,7 @@ class CoordinatorAgent:
                 total_candidates_considered=total,
                 candidates_pruned_by_hard_constraint=pruned,
                 duplicate_candidates_merged=merged,
+                search_effort_summary=effort,
             )
 
         # ---- Stage 2: every evaluate() for every candidate, one gather ------
@@ -157,6 +160,7 @@ class CoordinatorAgent:
             total_candidates_considered=total,
             candidates_pruned_by_hard_constraint=pruned,
             duplicate_candidates_merged=merged,
+            search_effort_summary=effort,
         )
 
     # ------------------------------------------------------------------ #
@@ -187,6 +191,11 @@ def same_train_query(query: UserQuery) -> UserQuery:
     if query.max_transfers > SAME_TRAIN_MAX_TRANSFERS_CAP:
         return replace(query, max_transfers=SAME_TRAIN_MAX_TRANSFERS_CAP)
     return query
+
+
+def search_effort(*proposals: ItineraryProposal) -> tuple[SearchEffort, ...]:
+    """Passthrough of each Stage-1 proposal's existing SearchStats; nothing is recomputed."""
+    return tuple(SearchEffort(p.agent_name, p.search_stats.nodes_expanded, p.found) for p in proposals)
 
 
 def dedupe_across_agents(candidates: list[CandidateItinerary]) -> list[CandidateItinerary]:

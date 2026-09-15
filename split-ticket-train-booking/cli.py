@@ -179,6 +179,8 @@ def format_recommendation(rec: FinalRecommendation, seconds: float) -> str:
     if not rec.found:
         out.append("NO ITINERARY FOUND")
         out.append(f"  reason: {rec.failure_reason}")
+        for e in rec.search_effort_summary:
+            out.append(f"  search effort: {e.agent_name} searched {e.nodes_expanded} state(s) before concluding")
         out.append(f"  candidates considered before giving up: {rec.total_candidates_considered}")
     else:
         out.append(
