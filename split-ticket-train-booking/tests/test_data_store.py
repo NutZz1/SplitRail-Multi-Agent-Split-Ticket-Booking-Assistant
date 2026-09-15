@@ -301,3 +301,12 @@ def test_get_trains_running_through_matches_filtered_query(db):
     assert fast == slow == ["12609", "12658"]
     assert db.get_trains_running_through("SBC", "2026-09-26") == []
     assert db.get_trains_running_through("ZZZZZ", "2026-09-16") == []
+
+
+def test_demo_coverage_accessors(db):
+    demo = db.get_demo_train_numbers()
+    assert demo == ["12217", "12609", "12658", "12801", "15017", "16525"]
+    assert db.get_run_pattern("12217") == ["TUE", "FRI"]
+    assert db.get_run_pattern("12658") == ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    assert db.get_run_pattern(NON_DEMO) == []
+    assert db.get_run_date_range() == ("2026-09-10", "2026-09-25")

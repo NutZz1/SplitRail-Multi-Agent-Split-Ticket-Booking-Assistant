@@ -22,17 +22,24 @@ from __future__ import annotations
 import heapq
 import itertools
 import time
-from typing import Callable
+from typing import Callable, Hashable
 
 from src.data_store import RailDataStore
 from src.goal import is_goal
 from src.heuristic import RailHeuristic
+from src.proposal import itinerary_signature
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery, initial_state
 from src.successors import close_final_ticket, get_successors
 
 #: Signature every successor generator must satisfy.
 SuccessorsFn = Callable[[JourneyState, UserQuery, RailDataStore], list[JourneyState]]
+
+
+#: Safety valve for k-best search: stop collecting further candidates after
+#: this many expansions even if fewer than k were found (a pathological
+#: query must not hang the agent). Never cuts the *first* goal short.
+DEFAULT_MAX_EXPANSIONS = 50_000
 
 
 def astar_search(
@@ -47,7 +54,53 @@ def astar_search(
     same-train generator; pass
     :func:`src.successors_different_train.get_successors_different_train`
     to search across trains. The search loop itself is identical.
+
+    This is exactly :func:`astar_search_k` with ``k=1``.
     """
+    goals, stats = astar_search_k(query, store, heuristic, k=1, successors_fn=successors_fn)
+    return (goals[0] if goals else None), stats
+
+
+def astar_search_k(
+    query: UserQuery,
+    store: RailDataStore,
+    heuristic: RailHeuristic,
+    k: int = 1,
+    successors_fn: SuccessorsFn = get_successors,
+    signature_fn: Callable[[JourneyState], Hashable] = lambda g: itinerary_signature(g.tickets_so_far),
+    max_expansions: int = DEFAULT_MAX_EXPANSIONS,
+) -> tuple[list[JourneyState], SearchStats]:
+    """k-best A*: the up-to-``k`` cheapest *distinct* goal states, cheapest first.
+
+    Why this is the k-shortest-paths algorithm here (and Yen's is not needed)
+    ---------------------------------------------------------------------------
+    Yen's algorithm exists for graphs whose nodes are shared by many paths:
+    it forces deviations by temporarily deleting edges of already-found
+    paths. In this search space a ``JourneyState`` carries its whole
+    history (tickets, cumulative time, arrival datetime, coach), so two
+    different paths never reach the same state -- the reachable space is a
+    tree. Yen's "deviate at node i of path P" is therefore precisely
+    "expand the other successors of P[i]", which A* already does. Continuing
+    the same A* past the first goal and collecting goals in pop order is
+    the standard k-best-first search for such a space:
+
+    * goals come out in nondecreasing cost, because the rail-graph
+      heuristic is consistent (shortest-path distances obey the triangle
+      inequality and every real segment costs at least its graph edge);
+    * every popped goal is a genuinely different path, by construction;
+    * nothing is missed: no edge is ever deleted, no path is ever excluded.
+
+    De-duplication: ``signature_fn`` collapses goals that differ only in
+    tie-breaking noise (coach / class choice) -- see
+    :func:`src.proposal.itinerary_signature`. The first goal per signature
+    is kept, which is the cheapest one.
+
+    Returned goal states have their final ticket closed. ``stats`` is one
+    aggregate record for the whole search; ``stats.path`` / ``total_cost``
+    describe the best goal.
+    """
+    if k < 1:
+        raise ValueError("k must be >= 1")
     stats = SearchStats(algorithm="A*")
     t0 = time.perf_counter()
     goal_station = query.destination_station
@@ -63,6 +116,9 @@ def astar_search(
     parents: dict[JourneyState, JourneyState | None] = {start: None}
     stats.note_frontier(1)
 
+    goals: list[JourneyState] = []
+    seen_signatures: set[Hashable] = set()
+
     while frontier:
         _, _, state = heapq.heappop(frontier)
         if state in finalized:
@@ -70,9 +126,19 @@ def astar_search(
         finalized.add(state)
 
         if is_goal(state, query):
-            stats.finish_found(state, parents, finalized=close_final_ticket(state, query, store))
-            stats.wall_clock_seconds = time.perf_counter() - t0
-            return stats.path[-1], stats  # type: ignore[index]
+            closed = close_final_ticket(state, query, store)
+            sig = signature_fn(closed)
+            if sig not in seen_signatures:
+                seen_signatures.add(sig)
+                goals.append(closed)
+                if len(goals) == 1:
+                    stats.finish_found(state, parents, finalized=closed)
+                if len(goals) >= k:
+                    break
+            continue  # a goal is never expanded
+
+        if goals and stats.nodes_expanded >= max_expansions:
+            break  # enough looking for extra candidates; the best one is safe
 
         stats.nodes_expanded += 1
         for child in successors_fn(state, query, store):
@@ -88,6 +154,7 @@ def astar_search(
             heapq.heappush(frontier, (f(child), next(counter), child))
         stats.note_frontier(len(frontier))
 
-    stats.finish_not_found()
+    if not goals:
+        stats.finish_not_found()
     stats.wall_clock_seconds = time.perf_counter() - t0
-    return None, stats
+    return goals, stats

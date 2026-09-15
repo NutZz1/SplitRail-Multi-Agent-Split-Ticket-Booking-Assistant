@@ -390,6 +390,28 @@ class RailDataStore:
             out.setdefault(r["to_station"], {})[r["coach_code"]] = r["status"]
         return out
 
+    # -- demo-coverage discovery -------------------------------------------
+    def get_demo_train_numbers(self) -> list[str]:
+        """Trains that have hand-collected coach composition data -- the only
+        ones with seat availability and run-date coverage. Sorted ascending."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT train_number FROM coach_compositions ORDER BY train_number"
+        ).fetchall()
+        return [r["train_number"] for r in rows]
+
+    def get_run_pattern(self, train_number: str) -> list[str]:
+        """Days of the week the train runs (MON..SUN, in week order); empty if unknown."""
+        order = {d: i for i, d in enumerate(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"])}
+        rows = self._conn.execute(
+            "SELECT day_of_week FROM train_run_pattern WHERE train_number = ?", (train_number,)
+        ).fetchall()
+        return sorted((r["day_of_week"] for r in rows), key=order.__getitem__)
+
+    def get_run_date_range(self) -> tuple[str, str] | None:
+        """(earliest, latest) ``YYYY-MM-DD`` covered by ``train_run_dates``, or None if empty."""
+        row = self._conn.execute("SELECT MIN(run_date), MAX(run_date) FROM train_run_dates").fetchone()
+        return (row[0], row[1]) if row and row[0] else None
+
     # -- run calendar -------------------------------------------------------
     def runs_on_date(self, train_number: str, date_str: str) -> bool:
         """Return True if ``train_number`` runs on ``date_str`` (``YYYY-MM-DD``).

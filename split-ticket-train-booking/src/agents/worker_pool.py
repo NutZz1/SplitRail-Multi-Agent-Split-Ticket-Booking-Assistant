@@ -12,7 +12,7 @@ processes run at ~0.55-0.8x of back-to-back time.
 Each worker process opens its own read-only :class:`RailDataStore` and
 builds its own :class:`RailHeuristic` once, in the pool initializer (~1 s).
 A search request crosses the process boundary as a :class:`UserQuery` plus
-a mode name, and comes back as ``(JourneyState | None, SearchStats)`` --
+a mode name and k, and comes back as ``(list[JourneyState], SearchStats)`` --
 all plain dataclasses, so pickling is cheap. Exceptions raised in a worker
 propagate to the awaiting coroutine.
 
@@ -35,7 +35,7 @@ from typing import Callable
 from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.rail_graph import build_graph
-from src.search_astar import astar_search
+from src.search_astar import astar_search_k
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
 from src.successors import get_successors
@@ -58,10 +58,10 @@ def _init_worker(db_path: str) -> None:
     _WORKER["heuristic"] = RailHeuristic(build_graph(store, verbose=False))
 
 
-def _run_search(query: UserQuery, mode: str) -> tuple[JourneyState | None, SearchStats]:
+def _run_search(query: UserQuery, mode: str, k: int) -> tuple[list[JourneyState], SearchStats]:
     store: RailDataStore = _WORKER["store"]  # type: ignore[assignment]
     heuristic: RailHeuristic = _WORKER["heuristic"]  # type: ignore[assignment]
-    return astar_search(query, store, heuristic, successors_fn=SEARCH_MODES[mode])
+    return astar_search_k(query, store, heuristic, k=k, successors_fn=SEARCH_MODES[mode])
 
 
 class SearchWorkerPool:
@@ -80,12 +80,12 @@ class SearchWorkerPool:
         for f in futures:
             f.result()
 
-    async def search(self, query: UserQuery, mode: str) -> tuple[JourneyState | None, SearchStats]:
-        """Run ``astar_search`` with the named successor mode in a worker process."""
+    async def search(self, query: UserQuery, mode: str, k: int = 1) -> tuple[list[JourneyState], SearchStats]:
+        """Run ``astar_search_k`` with the named successor mode in a worker process."""
         if mode not in SEARCH_MODES:
             raise ValueError(f"unknown search mode {mode!r}; expected one of {sorted(SEARCH_MODES)}")
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._pool, _run_search, query, mode)
+        return await loop.run_in_executor(self._pool, _run_search, query, mode, k)
 
     def shutdown(self) -> None:
         self._pool.shutdown(wait=True)
