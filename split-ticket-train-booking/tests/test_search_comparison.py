@@ -19,11 +19,12 @@ from src.state import UserQuery
 DATE = dt.date(2026, 9, 16)
 
 
-def run_all(query, store, heuristic) -> dict[str, tuple]:
+def run_all(query, store, heuristic, successors_fn=None) -> dict[str, tuple]:
+    kw = {"successors_fn": successors_fn} if successors_fn is not None else {}
     return {
-        "BFS": bfs_search(query, store),
-        "UCS": ucs_search(query, store),
-        "A*": astar_search(query, store, heuristic),
+        "BFS": bfs_search(query, store, **kw),
+        "UCS": ucs_search(query, store, **kw),
+        "A*": astar_search(query, store, heuristic, **kw),
     }
 
 
@@ -86,9 +87,30 @@ def test_comparison_table_no_transfers(store, heuristic):
     assert results["A*"][1].nodes_expanded <= results["UCS"][1].nodes_expanded
 
 
-def test_comparison_table_no_solution(store, heuristic):
+def test_comparison_table_no_solution_fails_fast(store, heuristic):
     q = UserQuery("SBC", "MYS", DATE, max_transfers=2)
     results = run_all(q, store, heuristic)
-    print_table("SBC -> MYS on 2026-09-16 (unreachable: exhaustive search, no path)", results)
+    print_table("SBC -> MYS on 2026-09-16 (no boardable train reaches MYS: fails at boarding)", results)
+    for _, (goal, stats) in results.items():
+        assert goal is None and not stats.path_found and stats.nodes_expanded == 1
+
+
+def test_comparison_table_no_solution_exhaustive(store, heuristic):
+    from src.successors_different_train import get_successors_different_train
+    q = UserQuery("PURI", "CDG", dt.date(2026, 9, 16), max_transfers=2)
+    results = run_all(q, store, heuristic, successors_fn=get_successors_different_train)
+    print_table("PURI -> CDG on 2026-09-16, different-train moves (12217 does not run Wed: exhaustive, no path)", results)
     for _, (goal, stats) in results.items():
         assert goal is None and not stats.path_found and stats.nodes_expanded > 50
+
+
+def test_comparison_table_different_train_solvable(store, heuristic):
+    from src.successors_different_train import get_successors_different_train
+    q = UserQuery("PURI", "CDG", dt.date(2026, 9, 15), max_transfers=2)
+    results = run_all(q, store, heuristic, successors_fn=get_successors_different_train)
+    print_table("PURI -> CDG on 2026-09-15, different-train moves (real 12801 -> 12217 connection at NDLS)", results)
+    costs = {name: stats.total_cost for name, (_, stats) in results.items()}
+    assert costs["UCS"] == costs["A*"]
+    assert results["A*"][1].nodes_expanded <= results["UCS"][1].nodes_expanded
+    for _, (goal, _) in results.items():
+        assert [t.train_number for t in goal.tickets_so_far] == ["12801", "12217"]
