@@ -210,6 +210,19 @@ def test_total_failure_short_circuits_before_stage_2(agents, store):
     assert "SameTrainSearchAgent" in r.failure_reason and "DifferentTrainSearchAgent" in r.failure_reason
     assert "CC" in r.failure_reason
     assert len(spy_seat.calls) == 0 and len(spy_fare.calls) == 0   # Stage 2 never entered
+    # Stage 1 genuinely searched before concluding (not a trivial fail):
+    effort = {e.agent_name: e for e in r.search_effort_summary}
+    assert set(effort) == {"SameTrainSearchAgent", "DifferentTrainSearchAgent"}
+    assert all(not e.found for e in effort.values())
+    assert all(e.nodes_expanded >= 1 for e in effort.values())
+    print("   " + "; ".join(e.describe() for e in r.search_effort_summary))
+
+
+def test_search_effort_is_populated_on_success_too(coordinator):
+    r = asyncio.run(coordinator.resolve(SBC_MAS))
+    effort = {e.agent_name: e for e in r.search_effort_summary}
+    assert effort["SameTrainSearchAgent"].found and effort["SameTrainSearchAgent"].nodes_expanded > 50
+    assert effort["DifferentTrainSearchAgent"].found and effort["DifferentTrainSearchAgent"].nodes_expanded > 10
 
 
 def test_combine_failure_reasons_keeps_both():
