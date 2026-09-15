@@ -34,6 +34,18 @@ class RankedItinerary:
 
 
 @dataclass(frozen=True)
+class SearchEffort:
+    """How hard one Stage-1 agent looked, straight from its proposal's SearchStats."""
+
+    agent_name: str
+    nodes_expanded: int
+    found: bool
+
+    def describe(self) -> str:
+        return f"{self.agent_name} searched {self.nodes_expanded} state(s), {'found' if self.found else 'no'} itinerary"
+
+
+@dataclass(frozen=True)
 class FinalRecommendation:
     query: UserQuery
     found: bool
@@ -42,6 +54,7 @@ class FinalRecommendation:
     total_candidates_considered: int
     candidates_pruned_by_hard_constraint: int
     duplicate_candidates_merged: int = 0  # same itinerary found by both search agents, shown once
+    search_effort_summary: tuple[SearchEffort, ...] = ()  # one entry per Stage-1 agent that ran
 
     @property
     def best(self) -> RankedItinerary | None:
@@ -50,8 +63,9 @@ class FinalRecommendation:
     def describe(self) -> str:
         q = self.query
         head = f"{q.origin_station} -> {q.destination_station} on {q.travel_date}"
+        effort = "; ".join(e.describe() for e in self.search_effort_summary)
         if not self.found:
-            return f"{head}: no itinerary -- {self.failure_reason}"
+            return f"{head}: no itinerary -- {self.failure_reason}" + (f" [{effort}]" if effort else "")
         lines = [
             f"{head}: {len(self.ranked_options)} option(s) "
             f"({self.total_candidates_considered} considered, {self.duplicate_candidates_merged} duplicate(s) merged, "
