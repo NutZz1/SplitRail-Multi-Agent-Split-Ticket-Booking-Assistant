@@ -16,6 +16,7 @@ import pytest
 from src.data_store import RailDataStore
 from src.rail_graph import segment_minutes
 from src.state import JourneyState, Ticket, UserQuery, initial_state
+from src.constraint_checks import bookable_coaches
 from src.successors import (
     MIN_COACH_SWITCH_MINUTES,
     best_coach_per_class,
@@ -190,15 +191,17 @@ def test_at_bnc_continue_and_transfer_are_generated(store):
     assert cont.transfer_count == 0 and cont.tickets_so_far == ()
 
     # b) same-train transfer to a different coach with room on BNC->BWT
-    onward = store.get_availability(MAIL, "BNC", "BWT")
-    alternates = [c for c, st in onward.items() if c != "S1" and st != "UNAVAILABLE"]
+    # An alternate coach qualifies if a ticket BNC -> X is bookable in it for
+    # some halt X ahead (a ticket needs one bookable pair: its own endpoints).
+    ahead = ["BWT", "JTJ", "KPD", "AJJ", "PER", "MAS"]
+    alternates = bookable_coaches(store, MAIL, "BNC", ahead)
+    alternates.pop("S1", None)
     if not alternates:
-        pytest.skip("no alternate coach with room on BNC->BWT in this dataset")
+        pytest.skip("no alternate coach with a bookable ticket from BNC in this dataset")
     assert k["TRANSFER"], "expected a same-train transfer at the 5-minute BNC halt"
     for t in k["TRANSFER"]:
         assert t.current_station == "BNC" and t.current_train == MAIL
         assert t.current_coach != "S1" and t.current_coach in alternates
-        assert onward[t.current_coach] != "UNAVAILABLE"
         assert t.transfer_count == 1
         assert len(t.tickets_so_far) == 1
         closed = t.tickets_so_far[0]
@@ -267,22 +270,52 @@ def test_arrival_at_mas_has_no_successors_and_correct_time(store):
     assert get_successors(state, QUERY, store) == []
 
 
-def test_continue_is_pruned_when_ticket_segment_is_unavailable(store):
-    """Pick a coach whose (ticket origin -> next halt) status is UNAVAILABLE and confirm no continue."""
+def _first_unbookable_ahead(store):
+    """(station, coach) where NO ticket SBC -> X is bookable in `coach` for any halt X ahead of `station`."""
     stops = store.get_real_halt_stops(MAIL)
-    found = None
-    for here, nxt in zip(stops[1:-1], stops[2:]):
-        for coach, st in store.get_availability(MAIL, "SBC", nxt.station_code).items():
-            if st == "UNAVAILABLE":
-                found = (here.station_code, coach)
-                break
-        if found:
-            break
-    assert found, "expected at least one UNAVAILABLE (SBC -> X) pair for some coach"
+    for i, here in enumerate(stops[1:-1], start=1):
+        ahead = [s.station_code for s in stops[i + 1:]]
+        options = bookable_coaches(store, MAIL, "SBC", ahead)
+        for coach in store.get_availability(MAIL, "SBC", "BNC"):
+            if coach not in options:
+                return here.station_code, coach
+    return None
+
+
+def test_continue_is_pruned_when_ticket_can_no_longer_be_closed(store):
+    """A coach whose in-progress ticket (from SBC) has no bookable closing point ahead cannot ride on."""
+    found = _first_unbookable_ahead(store)
+    if found is None:
+        pytest.skip("every coach has a bookable SBC -> X somewhere ahead at every halt in this dataset")
     station, coach = found
     state = on_board(store, QUERY, station, coach)
     k = kinds(state, get_successors(state, QUERY, store))
     assert k["CONTINUE"] == []
+
+
+def test_continue_allowed_when_next_pair_unbookable_but_a_later_one_is(store):
+    """The OLD rule (every SBC -> next pair must be bookable) was wrong: a ticket only needs its own pair."""
+    stops = store.get_real_halt_stops(MAIL)
+    for i, here in enumerate(stops[1:-1], start=1):
+        nxt = stops[i + 1].station_code
+        later = [s.station_code for s in stops[i + 2:]]
+        for coach, st in store.get_availability(MAIL, "SBC", nxt).items():
+            if st == "UNAVAILABLE" and coach in bookable_coaches(store, MAIL, "SBC", later):
+                state = on_board(store, QUERY, here.station_code, coach)
+                k = kinds(state, get_successors(state, QUERY, store))
+                assert len(k["CONTINUE"]) == 1, f"{coach} at {here.station_code}: SBC->{nxt} UNAVAILABLE but a later pair is bookable"
+                return
+    pytest.skip("no coach in this dataset has an UNAVAILABLE next pair followed by a bookable later pair")
+
+
+def test_goal_ticket_pair_is_always_bookable(store, mail_query):
+    """Reaching MAS implies the closed SBC -> MAS ticket is bookable in the coach ridden."""
+    from src.search_astar import astar_search
+    from src.heuristic import RailHeuristic
+    from src.rail_graph import build_graph
+    goal, _ = astar_search(mail_query, store, RailHeuristic(build_graph(store, verbose=False)))
+    assert goal is not None
+    assert goal.tickets_so_far[-1].status in {"CONFIRMED", "RAC", "WAITLIST"}
 
 
 def test_cycle_prevention_blocks_revisited_station(store):

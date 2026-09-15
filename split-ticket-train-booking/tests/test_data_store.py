@@ -284,3 +284,20 @@ def test_store_usage_does_not_modify_db():
         store.get_availability(MAIL, "SBC", "MAS")
         store.get_all_trains_through_station("MAS")
     assert _sha256(DEFAULT_DB_PATH) == before
+
+
+def test_get_availability_from_matches_per_pair_queries(db):
+    by_dest = db.get_availability_from(MAIL, "SBC")
+    assert set(by_dest) == {"BNC", "BWT", "JTJ", "KPD", "AJJ", "PER", "MAS"}
+    for to, coaches in by_dest.items():
+        assert coaches == db.get_availability(MAIL, "SBC", to)
+    assert db.get_availability_from(MAIL, "BNCE") == {}   # pass-through: not bookable
+    assert db.get_availability_from(NON_DEMO, "JAT") == {}
+
+
+def test_get_trains_running_through_matches_filtered_query(db):
+    fast = db.get_trains_running_through("SBC", "2026-09-16")
+    slow = [t for t in db.get_all_trains_through_station("SBC") if db.runs_on_date(t, "2026-09-16")]
+    assert fast == slow == ["12609", "12658"]
+    assert db.get_trains_running_through("SBC", "2026-09-26") == []
+    assert db.get_trains_running_through("ZZZZZ", "2026-09-16") == []

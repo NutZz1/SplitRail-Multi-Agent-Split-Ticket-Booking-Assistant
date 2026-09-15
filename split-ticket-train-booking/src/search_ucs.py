@@ -19,6 +19,7 @@ from __future__ import annotations
 import heapq
 import itertools
 import time
+from typing import Callable
 
 from src.data_store import RailDataStore
 from src.goal import is_goal
@@ -26,9 +27,17 @@ from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery, initial_state
 from src.successors import close_final_ticket, get_successors
 
+#: Signature every successor generator must satisfy.
+SuccessorsFn = Callable[[JourneyState, UserQuery, RailDataStore], list[JourneyState]]
 
-def ucs_search(query: UserQuery, store: RailDataStore) -> tuple[JourneyState | None, SearchStats]:
-    """Uniform-cost search. Returns ``(goal_state, stats)`` or ``(None, stats)``."""
+
+def ucs_search(
+    query: UserQuery, store: RailDataStore, successors_fn: SuccessorsFn = get_successors
+) -> tuple[JourneyState | None, SearchStats]:
+    """Uniform-cost search. Returns ``(goal_state, stats)`` or ``(None, stats)``.
+
+    ``successors_fn`` selects the move generator (default: same-train).
+    """
     stats = SearchStats(algorithm="UCS")
     t0 = time.perf_counter()
 
@@ -52,7 +61,7 @@ def ucs_search(query: UserQuery, store: RailDataStore) -> tuple[JourneyState | N
             return stats.path[-1], stats  # type: ignore[index]
 
         stats.nodes_expanded += 1
-        for child in get_successors(state, query, store):
+        for child in successors_fn(state, query, store):
             stats.nodes_generated += 1
             child_g = child.cumulative_time_minutes
             if child in finalized:
