@@ -87,7 +87,7 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
 
     running = [tn for tn in halting if store.runs_on_date(tn, date)]
     if not running:
-        return f"None of the {len(halting)} train(s) halting at {origin} run on {date}."
+        return explain_no_running_train(halting, origin, query, store)
 
     if stats.nodes_generated == 0:
         cls = f" in class {query.travel_class_preference}" if query.class_is_hard_constraint else ""
@@ -100,3 +100,19 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
         f"{' and class ' + str(query.travel_class_preference) if query.class_is_hard_constraint else ''}. "
         f"Searched {stats.nodes_expanded} states."
     )
+
+
+def explain_no_running_train(halting: list[str], origin: str, query: UserQuery, store: RailDataStore) -> str:
+    """Distinguish a DATA-COVERAGE limit (trains with no run-date/availability data
+    at all) from a genuine WRONG-DAY result (covered trains that do not run that weekday)."""
+    date = query.travel_date.isoformat()
+    weekday = query.travel_date.strftime("%a").upper()
+    covered = [tn for tn in halting if store.get_run_pattern(tn)]
+    if not covered:
+        demo = ", ".join(store.get_demo_train_numbers())
+        return (
+            f"None of the {len(halting)} train(s) halting at {origin} have run-date/availability data in this "
+            f"dataset -- a data-coverage limit, not a search failure (coverage is limited to trains {demo})."
+        )
+    patterns = "; ".join(f"{tn} runs {'/'.join(store.get_run_pattern(tn))}" for tn in covered)
+    return f"No covered train halting at {origin} runs on {date} ({weekday}): {patterns}."

@@ -77,7 +77,7 @@ def test_propose_impossible_class_returns_not_found(agent):
 
 @pytest.mark.parametrize("query,expect", [
     (UserQuery("ZZZZZ", "MAS", DATE), "No train has a real halt"),
-    (UserQuery("SBC", "MAS", dt.date(2026, 9, 26)), "run on 2026-09-26"),
+    (UserQuery("SBC", "MAS", dt.date(2026, 9, 26)), "runs on 2026-09-26 (SAT)"),
     (UserQuery("SBC", "MYS", DATE), "No single train runs SBC -> MYS"),
     (UserQuery("SBC", "MAS", DATE, travel_class_preference="CC", class_is_hard_constraint=True), "Class CC is not offered"),
 ])
