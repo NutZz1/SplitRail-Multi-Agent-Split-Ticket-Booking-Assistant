@@ -1,5 +1,5 @@
 """
-SeatTransferAgent: scores how *practical* each transfer in a proposal is.
+SeatTransferAgent: scores how *practical* each transfer in a candidate is.
 
 Stage 1 agents decide whether an itinerary exists; this agent asks how
 awkward its transfers would be for a real passenger and expresses that as
@@ -20,6 +20,10 @@ Either kind gets an extra flat penalty when the onward train departs at
 night. The computation is a handful of lookups per transfer, so
 ``evaluate`` is a plain ``async def`` -- no process pool -- kept async only
 so the coordinator can ``asyncio.gather()`` all four agents uniformly.
+
+``evaluate`` scores ONE :class:`CandidateItinerary`: Stage 1 returns up to
+K candidates per proposal and Stage 3 ranks them individually, so the
+candidate is the natural unit. ``evaluate_all`` loops over a proposal.
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.data_store import RailDataStore
-from src.proposal import ItineraryProposal
+from src.proposal import CandidateItinerary, ItineraryProposal
 from src.state import Ticket
 
 #: Minutes-equivalent per coach position walked during a same-train switch.
@@ -37,6 +41,11 @@ from src.state import Ticket
 #: only 2-5 minutes long -- so each position costs about 2 minutes of
 #: "comfort". Ten positions (S2 -> B1 on 12658) therefore costs 20.
 COACH_DISTANCE_WEIGHT: float = 2.0
+
+#: Coach positions assumed when a same-train switch's rake layout is unknown.
+#: Half a typical 20-coach rake: pessimistic on purpose, so missing data
+#: never makes a transfer look easier than a known one.
+ASSUMED_COACH_DISTANCE_WHEN_UNKNOWN: int = 10
 
 #: Flat cost of changing trains: platform change with luggage, finding the
 #: new rake's coach order, boarding. Set to match the 20-minute connection
@@ -61,9 +70,14 @@ def is_night_hour(hour: int) -> bool:
 @dataclass(frozen=True)
 class TransferFeasibilityScore:
     proposal_agent_name: str
-    applicable: bool
+    applicable: bool  # False only for the placeholder built by not_applicable()
     per_transfer_penalties: tuple[dict, ...]
     total_feasibility_penalty: float
+
+    @classmethod
+    def not_applicable(cls, proposal_agent_name: str) -> "TransferFeasibilityScore":
+        """Placeholder for an agent that found no itinerary (nothing to score)."""
+        return cls(proposal_agent_name, False, (), 0.0)
 
     @property
     def transfer_count(self) -> int:
@@ -87,18 +101,20 @@ class SeatTransferAgent:
     def __init__(self, store: RailDataStore) -> None:
         self._store = store
 
-    async def evaluate(self, proposal: ItineraryProposal) -> TransferFeasibilityScore:
-        """Score every transfer in ``proposal``. Not applicable if the proposal found nothing."""
-        if not proposal.found or not proposal.tickets:
-            return TransferFeasibilityScore(proposal.agent_name, False, (), 0.0)
-
+    async def evaluate(self, candidate: CandidateItinerary) -> TransferFeasibilityScore:
+        """Score every transfer in one candidate itinerary."""
+        tickets = candidate.tickets
         penalties = tuple(
             self._score_transfer(prev, nxt)
-            for prev, nxt in zip(proposal.tickets, proposal.tickets[1:])
+            for prev, nxt in zip(tickets, tickets[1:])
             if prev.to_station == nxt.from_station
         )
         total = sum(p["penalty"] for p in penalties)
-        return TransferFeasibilityScore(proposal.agent_name, True, penalties, float(total))
+        return TransferFeasibilityScore(candidate.agent_name, True, penalties, float(total))
+
+    async def evaluate_all(self, proposal: ItineraryProposal) -> tuple[TransferFeasibilityScore, ...]:
+        """One score per candidate, in candidate order; empty if the proposal found nothing."""
+        return tuple([await self.evaluate(c) for c in proposal.candidates])
 
     # -- internals ----------------------------------------------------------
     def _score_transfer(self, prev: Ticket, nxt: Ticket) -> dict:
@@ -139,9 +155,3 @@ class SeatTransferAgent:
             "penalty": penalty,
             "note": note,
         }
-
-
-#: Coach positions assumed when a same-train switch's rake layout is unknown.
-#: Half a typical 20-coach rake: pessimistic on purpose, so missing data
-#: never makes a transfer look easier than a known one.
-ASSUMED_COACH_DISTANCE_WHEN_UNKNOWN: int = 10

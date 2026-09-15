@@ -17,7 +17,7 @@ def agent(store):
 
 
 def test_sbc_mas_direct_numbers(agent, store, mail_proposal):
-    score = asyncio.run(agent.evaluate(mail_proposal))
+    score = asyncio.run(agent.evaluate(mail_proposal.best))
     print("\n" + mail_proposal.describe())
     print(score.describe())
     assert isinstance(score, FareTimeScore) and score.applicable
@@ -26,7 +26,7 @@ def test_sbc_mas_direct_numbers(agent, store, mail_proposal):
     assert score.wall_clock_minutes >= score.moving_time_minutes
     assert score.layover_minutes == 15                           # dwell at the 6 intermediate halts
     # fare: class of the single ticket x real route distance
-    cls = mail_proposal.tickets[0].travel_class
+    cls = mail_proposal.best.tickets[0].travel_class
     km = route_distance_km("12658", "SBC", "MAS", store)
     assert score.total_fare == pytest.approx(km * FARE_PER_KM[cls], abs=0.01)
     assert 100 < score.total_fare < 2000
@@ -35,16 +35,16 @@ def test_sbc_mas_direct_numbers(agent, store, mail_proposal):
 
 def test_wall_clock_is_independent_of_g(agent, mail_proposal):
     # wall-clock is recomputed from ticket datetimes, not derived from total_time_minutes
-    score = asyncio.run(agent.evaluate(mail_proposal))
-    t = mail_proposal.tickets
+    score = asyncio.run(agent.evaluate(mail_proposal.best))
+    t = mail_proposal.best.tickets
     assert score.wall_clock_minutes == (t[-1].alighting_datetime - t[0].boarding_datetime).total_seconds() / 60
 
 
 def test_bnc_split_has_positive_layover(agent, bnc_split_proposal):
-    score = asyncio.run(agent.evaluate(bnc_split_proposal))
+    score = asyncio.run(agent.evaluate(bnc_split_proposal.best))
     print("\n" + bnc_split_proposal.describe())
     print(score.describe(), "| per-ticket", score.per_ticket_fares)
-    assert bnc_split_proposal.transfer_count == 1
+    assert bnc_split_proposal.best.transfer_count == 1
     assert score.layover_minutes > 0
     assert score.wall_clock_minutes > score.moving_time_minutes   # the dimension g(n) cannot see
     assert score.total_fare == pytest.approx(sum(score.per_ticket_fares), abs=0.01)
@@ -52,11 +52,11 @@ def test_bnc_split_has_positive_layover(agent, bnc_split_proposal):
 
 
 def test_puri_cdg_layover_is_the_real_connection_plus_dwell(agent, puri_cdg_proposal):
-    score = asyncio.run(agent.evaluate(puri_cdg_proposal))
+    score = asyncio.run(agent.evaluate(puri_cdg_proposal.best))
     print("\n" + puri_cdg_proposal.describe())
     print(score.describe(), "| per-ticket", score.per_ticket_fares)
-    assert score.moving_time_minutes == puri_cdg_proposal.total_time_minutes
-    t = puri_cdg_proposal.tickets
+    assert score.moving_time_minutes == puri_cdg_proposal.best.total_time_minutes
+    t = puri_cdg_proposal.best.tickets
     wall = (t[-1].alighting_datetime - t[0].boarding_datetime).total_seconds() / 60
     assert score.wall_clock_minutes == wall
     assert score.layover_minutes >= 400          # at least the real NDLS connection
@@ -67,16 +67,18 @@ def test_puri_cdg_layover_is_the_real_connection_plus_dwell(agent, puri_cdg_prop
 
 
 def test_split_fare_differs_from_direct_when_class_changes(agent, mail_proposal, bnc_split_proposal):
-    direct = asyncio.run(agent.evaluate(mail_proposal))
-    split = asyncio.run(agent.evaluate(bnc_split_proposal))
-    classes = [t.travel_class for t in bnc_split_proposal.tickets]
-    if len(set(classes)) > 1 or classes[0] != mail_proposal.tickets[0].travel_class:
+    direct = asyncio.run(agent.evaluate(mail_proposal.best))
+    split = asyncio.run(agent.evaluate(bnc_split_proposal.best))
+    classes = [t.travel_class for t in bnc_split_proposal.best.tickets]
+    if len(set(classes)) > 1 or classes[0] != mail_proposal.best.tickets[0].travel_class:
         assert split.total_fare != direct.total_fare
     assert split.moving_time_minutes == direct.moving_time_minutes == 340
 
 
 def test_not_applicable_when_no_solution(agent, no_solution_proposal):
-    score = asyncio.run(agent.evaluate(no_solution_proposal))
+    # per-candidate scoring: a proposal with no candidates yields no scores at all
+    assert asyncio.run(agent.evaluate_all(no_solution_proposal)) == ()
+    score = FareTimeScore.not_applicable(no_solution_proposal.agent_name)
     assert score.applicable is False
     assert score.total_fare is None
     assert score.moving_time_minutes == score.wall_clock_minutes == score.layover_minutes == 0.0
@@ -85,11 +87,11 @@ def test_not_applicable_when_no_solution(agent, no_solution_proposal):
 
 
 def test_score_is_frozen(agent, mail_proposal):
-    score = asyncio.run(agent.evaluate(mail_proposal))
+    score = asyncio.run(agent.evaluate(mail_proposal.best))
     with pytest.raises(Exception):
         score.total_fare = 0.0  # type: ignore[misc]
 
 
 def test_total_fare_matches_fare_model(agent, store, bnc_split_proposal):
-    score = asyncio.run(agent.evaluate(bnc_split_proposal))
-    assert score.total_fare == compute_total_fare(bnc_split_proposal.tickets, store)
+    score = asyncio.run(agent.evaluate(bnc_split_proposal.best))
+    assert score.total_fare == compute_total_fare(bnc_split_proposal.best.tickets, store)

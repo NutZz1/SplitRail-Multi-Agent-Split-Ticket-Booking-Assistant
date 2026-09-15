@@ -1,5 +1,5 @@
 """
-FareTimeAgent: prices a proposal and measures its real elapsed time.
+FareTimeAgent: prices a candidate itinerary and measures its real elapsed time.
 
 Adds two dimensions the search itself does not optimise:
 
@@ -13,6 +13,8 @@ Adds two dimensions the search itself does not optimise:
 
 Lightweight (a few lookups per ticket): a plain ``async def`` with no
 process pool, async only so the coordinator can gather all four agents.
+``evaluate`` scores one :class:`CandidateItinerary` (Stage 3 ranks
+candidates individually); ``evaluate_all`` loops over a proposal.
 """
 
 from __future__ import annotations
@@ -21,18 +23,23 @@ from dataclasses import dataclass
 
 from src.data_store import RailDataStore
 from src.fare_model import compute_fare, compute_total_fare
-from src.proposal import ItineraryProposal
+from src.proposal import CandidateItinerary, ItineraryProposal
 
 
 @dataclass(frozen=True)
 class FareTimeScore:
     proposal_agent_name: str
-    applicable: bool
+    applicable: bool  # False only for the placeholder built by not_applicable()
     total_fare: float | None
     moving_time_minutes: float
     wall_clock_minutes: float
     layover_minutes: float  # wall-clock minus moving: dwell at halts + waits between trains
     per_ticket_fares: tuple[float | None, ...] = ()
+
+    @classmethod
+    def not_applicable(cls, proposal_agent_name: str) -> "FareTimeScore":
+        """Placeholder for an agent that found no itinerary (nothing to score)."""
+        return cls(proposal_agent_name, False, None, 0.0, 0.0, 0.0)
 
     def describe(self) -> str:
         if not self.applicable:
@@ -50,17 +57,14 @@ class FareTimeAgent:
     def __init__(self, store: RailDataStore) -> None:
         self._store = store
 
-    async def evaluate(self, proposal: ItineraryProposal) -> FareTimeScore:
-        """Fare and elapsed-time figures for ``proposal``. Not applicable if it found nothing."""
-        if not proposal.found or not proposal.tickets or proposal.total_time_minutes is None:
-            return FareTimeScore(proposal.agent_name, False, None, 0.0, 0.0, 0.0)
-
-        tickets = proposal.tickets
-        moving = float(proposal.total_time_minutes)
+    async def evaluate(self, candidate: CandidateItinerary) -> FareTimeScore:
+        """Fare and elapsed-time figures for one candidate itinerary."""
+        tickets = candidate.tickets
+        moving = float(candidate.total_time_minutes)
         # Computed from the ticket datetimes, independently of g(n).
         wall = (tickets[-1].alighting_datetime - tickets[0].boarding_datetime).total_seconds() / 60
         return FareTimeScore(
-            proposal_agent_name=proposal.agent_name,
+            proposal_agent_name=candidate.agent_name,
             applicable=True,
             total_fare=compute_total_fare(tickets, self._store),
             moving_time_minutes=moving,
@@ -68,3 +72,7 @@ class FareTimeAgent:
             layover_minutes=wall - moving,
             per_ticket_fares=tuple(compute_fare(t, self._store) for t in tickets),
         )
+
+    async def evaluate_all(self, proposal: ItineraryProposal) -> tuple[FareTimeScore, ...]:
+        """One score per candidate, in candidate order; empty if the proposal found nothing."""
+        return tuple([await self.evaluate(c) for c in proposal.candidates])
