@@ -42,7 +42,7 @@ services while returning no bookable itinerary, and the interface says so.
 ### In the interface
 
 - Search by station code with station-name suggestions, travel date, class, and maximum transfers.
-- See **Trains on this line**: every train that actually runs your origin → destination without a change, read straight from the timetable, with departure, arrival, overnight markers, run time, and intermediate halt count.
+- See **Trains on this line**: every train that actually runs your origin → destination without a change, with departure, arrival, run time, and the days it runs. This prefers **live data from erail.in**, filtered to the services running on your travel date, and falls back to the bundled timetable when that source is unreachable. The panel always states which source answered.
 - Compare direct and split journeys with estimated fares, total duration, and availability labels.
 - Sort by recommendation, fare, duration, or transfers; filter for confirmed seats or no same-train seat changes.
 - Expand each itinerary for coach details, night transfers, leg fares, and comfort penalties.
@@ -52,6 +52,29 @@ Try **SBC → MAS, 16 September 2026** for direct and coach-change options, or *
 
 This is a **one-passenger academic demo**, not a live booking service. Availability and operating dates are simulated; fares are estimates. Travel dates cover **10–25 September 2026**. A same-train search allows at most one coach change; display filters only filter the returned candidates. There is no payment or booking flow. Web fonts are optional; the interface falls back to system fonts offline.
 
+## Live timetable data
+
+The bundled timetable is a **2020 snapshot**: it misses trains introduced since
+(Vande Bharat services, for instance) and keeps ones since withdrawn. So
+*Trains on this line* queries **erail.in** for the services running now,
+filtered to the weekday you are travelling.
+
+This is an **unofficial third-party source**, not an official Indian Railways
+API. It can be slow, unreachable, or change without notice, so every lookup
+falls back to the bundled timetable and the interface labels which one
+answered. Run with `python web.py --offline` to skip live lookups entirely.
+
+Two things to know about live results:
+
+- **erail widens a query to nearby stations in the same city.** A search from
+  SBC can return services departing SMVB or YPR. Each row shows the station
+  code actually matched when it differs from the one you asked for.
+- **Running days are reported for the boarding station**, not the train's own
+  origin, so an overnight train shows the day you actually board.
+
+The test suite never touches the network: parsing is covered against a saved
+response, and the one live call is skipped unless `SPLITRAIL_LIVE_TESTS=1`.
+
 ## CLI and tests
 
 ```sh
@@ -60,6 +83,6 @@ python cli.py --demo --no-pool
 pytest
 ```
 
-With the committed six-train subset the suite reports **276 passed, 8 failed**: those 8 assertions need the full timetable (fixed full-graph expansion counts and multi-candidate search statistics). Load the full network as below and the suite is **307 passed, 0 failed**.
+With the committed six-train subset the suite reports **276 passed, 8 failed**: those 8 assertions need the full timetable (fixed full-graph expansion counts and multi-candidate search statistics). Load the full network as below and the suite is **319 passed, 1 skipped** (the skip is the opt-in live-network test).
 
 See [data provenance and backend documentation](split-ticket-train-booking/README.md) for the real-versus-synthetic breakdown and search implementation.

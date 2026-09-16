@@ -96,6 +96,7 @@ Source layout:
     src/heuristic.py    RailHeuristic - admissible A* lower bound (cached Dijkstra)
     tests/              pytest suite (some graph/count checks require full schedules)
     web.py              local HTTP server and validated search adapter
+    src/live_trains.py  erail.in client for currently-running services
     web/                responsive browser interface
     data_source/convert_schedules.py  raw stop dump -> schedules_clean.json
 
@@ -106,3 +107,28 @@ technical pass-throughs at both ends, since a train that does not halt cannot
 be boarded. Termini are kept: they have no halt duration but are boardable.
 It reads the timetable only, so it covers every train in the database rather
 than the six with simulated availability.
+
+
+## Live timetable lookups
+
+`src/live_trains.py` fetches the services currently running between two
+stations from `erail.in/rail/getTrains.aspx`, which answers with a
+`~`-delimited text blob rather than JSON. Parsing is separated from the
+network call (`parse_between_stations` vs `fetch_between_stations`) so it is
+tested against a saved response in `tests/fixtures/`.
+
+`running_days` is a seven-character mask. **Index 0 is Monday**: train 12008
+returns `1110111` and is documented as running daily except Thursday, which is
+index 3. The [AniCrad/indian-rail-api](https://github.com/AniCrad/indian-rail-api)
+project, which covers the same endpoint, maps index 0 to Wednesday; that would
+place this train's off-day on Saturday instead.
+
+Two deliberate differences from that project:
+
+- It rotates `User-Agent` strings per request to avoid being blocked. This
+  client sends one honest identifying `User-Agent` instead.
+- Its date filter builds `new Date(YYYY, MM, DD)` with a 1-based month, which
+  is off by one month. This client uses `date.weekday()` directly.
+
+Every caller must handle `LiveLookupError` by falling back to the local
+database; `web.py` does, and reports which source answered.

@@ -5,15 +5,19 @@ import argparse
 import json
 import logging
 from dataclasses import asdict
+from datetime import date as date_cls
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
 from cli import build_system, resolve_timed, parse_date, validate_station, parse_class
 from data_source.build_sqlite_db import build, DEFAULT_OUT
+from src.live_trains import LiveLookupError, fetch_between_stations
 from src.state import UserQuery
 
 WEB = Path(__file__).parent / "web"
+# Live lookups reach a third-party site; --offline turns them off.
+LIVE_LOOKUPS = True
 
 
 def search(system, payload):
@@ -53,12 +57,45 @@ def search(system, payload):
             "effort": [asdict(e) for e in rec.search_effort_summary]}
 
 
+def _local_direct(system, origin, destination):
+    """Direct trains from the bundled timetable. Always available, 2020 vintage."""
+    return [{"train_number": r.train_number, "train_name": r.train_name or r.train_number,
+             "from_code": origin, "to_code": destination,
+             "departure": r.from_departure[:5], "arrival": r.to_arrival[:5],
+             "day_offset": (r.to_day - r.from_day)
+                           if r.from_day is not None and r.to_day is not None else None,
+             "duration_minutes": r.duration_minutes, "halts": r.stops_between,
+             "running_days": None}
+            for r in system.store.get_direct_trains(origin, destination)]
+
+
+def _live_direct(origin, destination, when):
+    """Direct trains from erail.in, limited to those running on ``when``.
+
+    Returns the trains plus the number hidden because they run on other days,
+    so the interface can say why the list is shorter than the full week's.
+    """
+    trains = fetch_between_stations(origin, destination)
+    running = [t for t in trains if when is None or t.runs_on(when)]
+    return [{"train_number": t.number, "train_name": t.name,
+             "from_code": t.from_code, "to_code": t.to_code,
+             "departure": t.departure, "arrival": t.arrival,
+             "day_offset": None, "duration_minutes": t.duration_minutes,
+             "halts": None,
+             "running_days": [d[:3] for d in t.running_day_names()]}
+            for t in running], len(trains) - len(running)
+
+
 def direct_trains(system, payload):
     """Every train that actually runs origin -> destination without a change.
 
-    Unlike :func:`search`, this reads the timetable alone, so it covers the
-    whole network rather than the six trains that have simulated seat and
-    run-date data. Results are therefore not filtered by travel date.
+    Prefers the live timetable, which reflects services running now, and falls
+    back to the bundled 2020 snapshot whenever the live lookup fails. The
+    response says which source answered so the interface never implies the
+    local snapshot is current.
+
+    Unlike :func:`search`, neither path is limited to the six trains that have
+    simulated seat and run-date data.
     """
     if not isinstance(payload, dict):
         raise ValueError("Please provide a journey query.")
@@ -66,14 +103,32 @@ def direct_trains(system, payload):
     destination = validate_station(str(payload.get("destination", "")), system.store)
     if origin == destination:
         raise ValueError("Choose two different stations for your journey.")
-    runs = system.store.get_direct_trains(origin, destination)
-    return {"trains": [{"train_number": r.train_number,
-                        "train_name": r.train_name or r.train_number,
-                        "departure": r.from_departure, "arrival": r.to_arrival,
-                        "day_offset": (r.to_day - r.from_day)
-                                      if r.from_day is not None and r.to_day is not None else None,
-                        "duration_minutes": r.duration_minutes,
-                        "halts": r.stops_between} for r in runs],
+
+    # Parsed directly rather than via parse_date(): that helper also enforces
+    # the demo run-date window, which exists only because the simulated
+    # availability data covers those days. Live running-days work for any date.
+    when, raw_date = None, str(payload.get("date", "")).strip()
+    if raw_date:
+        try:
+            when = date_cls.fromisoformat(raw_date)
+        except ValueError:
+            raise ValueError("Enter the travel date as YYYY-MM-DD.") from None
+
+    if LIVE_LOOKUPS:
+        try:
+            trains, other_days = _live_direct(origin, destination, when)
+            return {"trains": trains, "source": "live", "notice": None,
+                    "other_days": other_days, "origin": origin, "destination": destination}
+        except LiveLookupError as exc:
+            notice = str(exc)
+        except Exception:
+            logging.exception("Live timetable lookup failed")
+            notice = "The live timetable could not be read."
+    else:
+        notice = None
+
+    return {"trains": _local_direct(system, origin, destination), "source": "local",
+            "notice": notice, "other_days": 0,
             "origin": origin, "destination": destination}
 
 
@@ -126,7 +181,11 @@ def make_handler(system):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--offline", action="store_true",
+                        help="skip live erail.in lookups and use the bundled timetable only")
     args = parser.parse_args()
+    global LIVE_LOOKUPS
+    LIVE_LOOKUPS = not args.offline
     if not DEFAULT_OUT.exists():
         print("Building the local database from included demo data…")
         build(DEFAULT_OUT)

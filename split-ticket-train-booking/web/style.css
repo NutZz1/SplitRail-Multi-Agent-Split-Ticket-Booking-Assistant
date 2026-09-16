@@ -283,3 +283,7 @@ dialog>p:not(.eyebrow) { font-size: 13px; line-height: 1.9; color: #637652; }
   .direct-meta { grid-column: 2; text-align: right; }
   .direct-times { grid-column: 1; }
 }
+.direct-badge { display: inline-block; margin-top: 7px; font-size: 10.5px; letter-spacing: .4px; text-transform: uppercase; color: #6a7b5b; border: 1px solid var(--line); border-radius: 20px; padding: 3px 9px; }
+.direct-badge.live { color: #2f6a44; border-color: #bcd9c3; background: #f1f8f2; }
+.direct-badge.live::before { content: '●'; margin-right: 5px; font-size: 8px; vertical-align: 1px; }
+.direct-train em { font-style: normal; font-weight: 700; color: #4d6344; }
