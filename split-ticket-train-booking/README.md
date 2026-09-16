@@ -63,10 +63,14 @@ Uses a fixed random seed (42) for reproducibility, so your demo results are cons
 
 ## Project setup (SplitRail code)
 
-`railway.db` (45 MB) and `data_source/schedules_clean.json` (65 MB) are not
-committed. To reproduce them after cloning:
+Use Python 3.11+ with the pinned dependencies. See the [root README](../README.md)
+for the browser interface (`python web.py`) and its first-launch setup.
 
-1. Copy `schedules_clean.json` from `train_data_package.zip` into `data_source/`.
+`railway.db` and the optional full `data_source/schedules_clean.json` are not
+committed. The database builder falls back to the schedules in the committed
+`demo_subset.json`, so the six-train demo works directly after cloning.
+
+1. Optionally provide `schedules_clean.json` in `data_source/` for the full network.
 2. Build the database:
 
        python data_source/build_sqlite_db.py
@@ -83,4 +87,6 @@ Source layout:
     src/data_store.py   RailDataStore - read-only access to railway.db
     src/rail_graph.py   build_graph   - min-travel-time station graph
     src/heuristic.py    RailHeuristic - admissible A* lower bound (cached Dijkstra)
-    tests/              pytest suite verified against the real data
+    tests/              pytest suite (some graph/count checks require full schedules)
+    web.py              local HTTP server and validated search adapter
+    web/                responsive browser interface

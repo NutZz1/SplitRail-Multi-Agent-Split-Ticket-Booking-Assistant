@@ -174,7 +174,9 @@ def build(out_path: Path) -> None:
     print(f"trains:              {len(trains):>8,}")
 
     # --- schedule_stops ---------------------------------------------------
-    schedules = _load("schedules_clean.json")
+    # A fresh clone includes the six demo timetables; the full data is optional.
+    schedules = (_load("schedules_clean.json") if (HERE / "schedules_clean.json").exists()
+                 else _load("demo_subset.json")["schedules"])
 
     def stop_rows():
         for train_number, stops in schedules.items():
