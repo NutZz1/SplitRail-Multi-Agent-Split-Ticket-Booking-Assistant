@@ -136,3 +136,56 @@ def test_bad_date_is_rejected(web_system):
     with pytest.raises(ValueError):
         direct_trains(web_system, {"origin": "SBC", "destination": "MAS",
                                    "date": "16-09-2026"})
+
+
+def test_railradar_is_preferred_when_configured(web_system, monkeypatch):
+    """With a key present, RailRadar answers and is named as the provider."""
+    from src.live_trains import LiveTrain
+    from src import railradar
+    train = LiveTrain(number="12008", name="SHATABDI", from_code="SBC", from_name="SBC",
+                      to_code="MAS", to_name="MAS", departure="16:10", arrival="21:25",
+                      travel_time="05:15", running_days="1111111",
+                      train_origin_code="SBC", train_dest_code="MAS",
+                      halts=2, delay_minutes=12, provider="railradar.in")
+    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
+    monkeypatch.setattr(railradar, "is_configured", lambda: True)
+    monkeypatch.setattr(railradar, "fetch_between_stations", lambda *a, **k: [train])
+    monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: pytest.fail("erail should not be called"))
+    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
+    assert result["provider"] == "railradar.in"
+    assert result["trains"][0]["delay_minutes"] == 12
+
+
+def test_falls_back_to_erail_when_railradar_fails(web_system, monkeypatch):
+    from src.live_trains import LiveLookupError, LiveTrain
+    from src import railradar
+
+    def boom(*a, **k):
+        raise LiveLookupError("quota exceeded")
+
+    train = LiveTrain(number="12640", name="BRINDAVAN", from_code="SBC", from_name="SBC",
+                      to_code="MAS", to_name="MAS", departure="15:15", arrival="21:15",
+                      travel_time="06:00", running_days="1111111",
+                      train_origin_code="SBC", train_dest_code="MAS")
+    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
+    monkeypatch.setattr(railradar, "is_configured", lambda: True)
+    monkeypatch.setattr(railradar, "fetch_between_stations", boom)
+    monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: [train])
+    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
+    assert result["provider"] == "erail.in"
+
+
+def test_repeated_provider_failures_are_not_repeated_in_the_notice(web_system, monkeypatch):
+    from src.live_trains import LiveLookupError
+    from src import railradar
+
+    def boom(*a, **k):
+        raise LiveLookupError("everything is down")
+
+    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
+    monkeypatch.setattr(railradar, "is_configured", lambda: True)
+    monkeypatch.setattr(railradar, "fetch_between_stations", boom)
+    monkeypatch.setattr(web, "fetch_between_stations", boom)
+    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
+    assert result["source"] == "local"
+    assert result["notice"].count("everything is down") == 1

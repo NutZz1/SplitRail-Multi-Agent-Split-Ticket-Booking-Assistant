@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from cli import build_system, resolve_timed, parse_date, validate_station, parse_class
 from data_source.build_sqlite_db import build, DEFAULT_OUT
+from src import railradar
 from src.live_trains import LiveLookupError, fetch_between_stations
 from src.state import UserQuery
 
@@ -70,20 +71,40 @@ def _local_direct(system, origin, destination):
 
 
 def _live_direct(origin, destination, when):
-    """Direct trains from erail.in, limited to those running on ``when``.
+    """Direct trains from the best available live provider.
 
-    Returns the trains plus the number hidden because they run on other days,
-    so the interface can say why the list is shorter than the full week's.
+    RailRadar is tried first when a key is configured: it is a documented API
+    that also reports delays. erail.in is the keyless fallback. Returns the
+    trains, the number hidden because they run on other days, and the name of
+    the provider that answered.
     """
-    trains = fetch_between_stations(origin, destination)
-    running = [t for t in trains if when is None or t.runs_on(when)]
-    return [{"train_number": t.number, "train_name": t.name,
-             "from_code": t.from_code, "to_code": t.to_code,
-             "departure": t.departure, "arrival": t.arrival,
-             "day_offset": None, "duration_minutes": t.duration_minutes,
-             "halts": None,
-             "running_days": [d[:3] for d in t.running_day_names()]}
-            for t in running], len(trains) - len(running)
+    problems = []
+    for name, call in (("railradar", lambda: railradar.fetch_between_stations(origin, destination, when)),
+                       ("erail", lambda: fetch_between_stations(origin, destination))):
+        if name == "railradar" and not railradar.is_configured():
+            continue
+        try:
+            trains = call()
+        except LiveLookupError as exc:
+            problems.append(str(exc))
+            continue
+        running = [t for t in trains if when is None or t.runs_on(when)]
+        payload = [{"train_number": t.number, "train_name": t.name,
+                    "from_code": t.from_code, "to_code": t.to_code,
+                    "departure": t.departure, "arrival": t.arrival,
+                    "day_offset": None, "duration_minutes": t.duration_minutes,
+                    "halts": t.halts, "distance_km": t.distance_km,
+                    "delay_minutes": t.delay_minutes,
+                    "running_days": [d[:3] for d in t.running_day_names()]}
+                   for t in running]
+        return payload, len(trains) - len(running), t_provider(trains)
+    # dict.fromkeys keeps order while dropping providers that failed alike.
+    raise LiveLookupError(" ".join(dict.fromkeys(problems)) or "No live provider is available.")
+
+
+def t_provider(trains):
+    """Which provider produced these records."""
+    return trains[0].provider if trains else "unknown"
 
 
 def direct_trains(system, payload):
@@ -116,9 +137,10 @@ def direct_trains(system, payload):
 
     if LIVE_LOOKUPS:
         try:
-            trains, other_days = _live_direct(origin, destination, when)
-            return {"trains": trains, "source": "live", "notice": None,
-                    "other_days": other_days, "origin": origin, "destination": destination}
+            trains, other_days, provider = _live_direct(origin, destination, when)
+            return {"trains": trains, "source": "live", "provider": provider,
+                    "notice": None, "other_days": other_days,
+                    "origin": origin, "destination": destination}
         except LiveLookupError as exc:
             notice = str(exc)
         except Exception:
@@ -128,7 +150,7 @@ def direct_trains(system, payload):
         notice = None
 
     return {"trains": _local_direct(system, origin, destination), "source": "local",
-            "notice": notice, "other_days": 0,
+            "provider": "bundled timetable", "notice": notice, "other_days": 0,
             "origin": origin, "destination": destination}
 
 

@@ -97,6 +97,7 @@ Source layout:
     tests/              pytest suite (some graph/count checks require full schedules)
     web.py              local HTTP server and validated search adapter
     src/live_trains.py  erail.in client for currently-running services
+    src/railradar.py    RailRadar client: trains between stations + live status
     web/                responsive browser interface
     data_source/convert_schedules.py  raw stop dump -> schedules_clean.json
 
@@ -132,3 +133,29 @@ Two deliberate differences from that project:
 
 Every caller must handle `LiveLookupError` by falling back to the local
 database; `web.py` does, and reports which source answered.
+
+
+## RailRadar provider
+
+`src/railradar.py` wraps [RailRadar](https://railradar.in), a keyed JSON API
+over Indian Railways data. It is preferred over the erail.in scraper when
+`RAILRADAR_API_KEY` is set, because it is a documented contract with a support
+contact and it reports live delays. It is still **not** an official service:
+CRIS Pravah, the official platform, is restricted to partner organisations.
+
+    GET /v1/trains/between/{from}/{to}   trains on a pair, optional live delay
+    GET /v1/trains/{number}/live         position, delay, next halt
+
+Responses use the envelope `{"success", "data", "meta"}`; a `success: false`
+body is raised as `LiveLookupError` rather than read as data, so the caller
+falls back. The key travels in an `Authorization: Bearer` header and never in
+a URL — a test asserts this, since query strings leak into logs and history.
+
+`runDays` arrives as day names rather than erail's bit mask, so both are
+normalised through `live_trains.day_mask()` to one Monday-first 7-character
+mask. An unrecognised value becomes `1111111`, showing a train rather than
+letting a date filter silently drop it.
+
+The free plan allows 1,000 requests a month. Every search spends one, so the
+tests never call it: they stub `_request` or `urlopen`, and the single live
+test is skipped unless `RAILRADAR_API_KEY` is set.

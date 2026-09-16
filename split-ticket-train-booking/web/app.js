@@ -57,7 +57,7 @@ function renderOptions(){
 const hhmm = value => String(value ?? '').slice(0,5);
 function renderDirect(result){
   const list=result.trains, live=result.source==='live';
-  $('direct-source').textContent=live?'Live from erail.in':'Bundled 2020 timetable';
+  $('direct-source').textContent=live?`Live from ${result.provider||'a live source'}`:'Bundled 2020 timetable';
   $('direct-source').className=live?'direct-badge live':'direct-badge';
   const extra=result.other_days?` · ${result.other_days} more run on other days`:'';
   $('direct-count').textContent=list.length?`${list.length} direct train${list.length===1?'':'s'}${extra}`:'';
@@ -69,10 +69,14 @@ function renderDirect(result){
     const offset=t.day_offset?`<span class="day-offset">+${t.day_offset}d</span>`:'';
     const detail=t.running_days?t.running_days.length===7?'Runs daily':`Runs ${t.running_days.join(', ')}`
                 :`${t.halts} intermediate halt${t.halts===1?'':'s'}`;
-    return `<article class="direct-row"><div class="direct-train"><strong>${escapeHTML(t.train_number)}</strong><span>${from}${escapeHTML(t.train_name)}${to}</span></div><div class="direct-times"><span>${hhmm(t.departure)}</span><i>\u2192</i><span>${hhmm(t.arrival)}${offset}</span></div><div class="direct-meta"><span>${t.duration_minutes==null?'Duration unknown':duration(t.duration_minutes)}</span><span>${escapeHTML(detail)}</span></div></article>`;
+    // Only some providers report delays; 0 means on time and must still show.
+    const delay=t.delay_minutes==null?''
+      :t.delay_minutes<=0?'<span class="delay on-time">On time</span>'
+      :`<span class="delay late">${t.delay_minutes<60?`${t.delay_minutes} min late`:`${Math.floor(t.delay_minutes/60)}h ${String(t.delay_minutes%60).padStart(2,'0')}m late`}</span>`;
+    return `<article class="direct-row"><div class="direct-train"><strong>${escapeHTML(t.train_number)}</strong><span>${from}${escapeHTML(t.train_name)}${to}</span></div><div class="direct-times"><span>${hhmm(t.departure)}</span><i>\u2192</i><span>${hhmm(t.arrival)}${offset}</span></div><div class="direct-meta"><span>${t.duration_minutes==null?'Duration unknown':duration(t.duration_minutes)}</span><span>${escapeHTML(detail)}</span>${delay}</div></article>`;
   }).join(''):`<p class="direct-empty">No train runs ${escapeHTML(nameOf(result.origin))} \u2192 ${escapeHTML(result.destination===undefined?'':nameOf(result.destination))} without a change${result.other_days?' on this date':''}. A split journey may still get you there.</p>`;
   $('direct-note').textContent=live
-    ?'Live from erail.in, an unofficial third-party source, filtered to the services running on your travel date. Seat availability and fares below remain simulated for the six demo trains.'
+    ?`Live from ${result.provider}, an unofficial third-party source \u2014 Indian Railways' own API is restricted to partner organisations. Filtered to the services running on your travel date. Seat availability and fares below remain simulated for the six demo trains.`
     :(result.notice?`${result.notice} Showing the bundled 2020 timetable instead, which is not filtered by date.`
                    :'From the bundled 2020 timetable, covering the whole network but not current service changes. Seat availability below is simulated for the six demo trains.');
   $('direct-trains').hidden=false;

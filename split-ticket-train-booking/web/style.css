@@ -287,3 +287,6 @@ dialog>p:not(.eyebrow) { font-size: 13px; line-height: 1.9; color: #637652; }
 .direct-badge.live { color: #2f6a44; border-color: #bcd9c3; background: #f1f8f2; }
 .direct-badge.live::before { content: '●'; margin-right: 5px; font-size: 8px; vertical-align: 1px; }
 .direct-train em { font-style: normal; font-weight: 700; color: #4d6344; }
+.delay { font-size: 11px; font-weight: 600; }
+.delay.on-time { color: #2f6a44; }
+.delay.late { color: #b4671f; }

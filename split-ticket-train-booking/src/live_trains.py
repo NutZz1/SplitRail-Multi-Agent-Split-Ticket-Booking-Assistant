@@ -64,6 +64,11 @@ class LiveTrain:
     running_days: str       # 7 chars, index 0 = Monday
     train_origin_code: str  # where the train itself starts
     train_dest_code: str    # where the train itself ends
+    # Fields no provider is required to supply.
+    halts: Optional[int] = None          # intermediate halts on this leg
+    distance_km: Optional[float] = None
+    delay_minutes: Optional[int] = None  # live delay, when the provider knows it
+    provider: str = "erail.in"
 
     @property
     def duration_minutes(self) -> Optional[int]:
@@ -83,6 +88,24 @@ class LiveTrain:
 
     def running_day_names(self) -> list[str]:
         return [WEEKDAYS[i] for i, flag in enumerate(self.running_days) if flag == "1"]
+
+
+def day_mask(days) -> str:
+    """Normalise a provider's running-days field to a Monday-first mask.
+
+    Accepts a 7-character ``1``/``0`` string (already canonical) or a list of
+    day names in any capitalisation or length, e.g. ``["Mon", "Tuesday"]``.
+    Anything unrecognised yields ``"1111111"``, so a train is shown rather
+    than silently dropped by a date filter.
+    """
+    if isinstance(days, str) and len(days) == 7 and set(days) <= {"0", "1"}:
+        return days
+    if isinstance(days, (list, tuple, set)):
+        wanted = {str(d).strip().lower()[:3] for d in days}
+        mask = "".join("1" if name.lower()[:3] in wanted else "0" for name in WEEKDAYS)
+        if "1" in mask:
+            return mask
+    return "1111111"
 
 
 def _clock(value: str) -> str:
