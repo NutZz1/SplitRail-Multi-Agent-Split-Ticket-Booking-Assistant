@@ -125,6 +125,36 @@ class Stop:
         return self.halt_minutes is not None and self.halt_minutes > 0
 
 
+@dataclass(frozen=True)
+class DirectRun:
+    """One train serving an origin -> destination pair without a change.
+
+    Returned by :meth:`RailDataStore.get_direct_trains`. ``from_day`` and
+    ``to_day`` are journey days counted from departure at the train's own
+    origin, so ``to_day > from_day`` marks an overnight run.
+    """
+
+    train_number: str
+    train_name: Optional[str]
+    from_departure: str
+    from_day: Optional[int]
+    to_arrival: str
+    to_day: Optional[int]
+    stops_between: int
+
+    @property
+    def duration_minutes(self) -> Optional[int]:
+        """Origin-to-destination run time, spanning midnight where needed."""
+        if self.from_day is None or self.to_day is None:
+            return None
+
+        def mins(hms: str) -> int:
+            h, m, _ = (int(p) for p in hms.split(":"))
+            return h * 60 + m
+
+        return (self.to_day - self.from_day) * 24 * 60 + mins(self.to_arrival) - mins(self.from_departure)
+
+
 # --------------------------------------------------------------------------- #
 # Store
 # --------------------------------------------------------------------------- #
@@ -262,6 +292,80 @@ class RailDataStore:
             (station_code, date_str),
         ).fetchall()
         return [r["train_number"] for r in rows]
+
+    def get_direct_trains(
+        self, origin: str, destination: str, date_str: Optional[str] = None
+    ) -> list["DirectRun"]:
+        """Trains that run ``origin`` -> ``destination`` without a change.
+
+        A train qualifies only when it is boardable at ``origin`` and leaves
+        from there *before* it reaches ``destination``, so the direction of
+        travel is respected: a train listed for A -> B will not appear for
+        B -> A unless it genuinely serves both directions.
+
+        Technical pass-throughs are excluded on both ends -- a train that
+        races through ``origin`` without halting cannot be boarded there.
+        Termini are kept: they have no halt duration but are boardable
+        (departure set) or alightable (arrival set).
+
+        ``stops_between`` counts intermediate *halts* only, so it reflects
+        where passengers can actually join or leave rather than every
+        station on the line.
+
+        Pass ``date_str`` (``YYYY-MM-DD``) to keep only trains running that
+        day. Results are ordered by departure time, earliest first.
+        """
+        params: list[object] = [origin, destination]
+        date_filter = ""
+        if date_str is not None:
+            date_filter = """
+              AND EXISTS (SELECT 1 FROM train_run_dates AS d
+                          WHERE d.train_number = a.train_number AND d.run_date = ?)"""
+            params.append(date_str)
+
+        rows = self._conn.execute(
+            f"""
+            SELECT a.train_number, t.name AS train_name,
+                   a.departure AS from_departure, a.journey_day AS from_day,
+                   b.arrival   AS to_arrival,     b.journey_day AS to_day,
+                   (SELECT COUNT(*) FROM schedule_stops AS m
+                     WHERE m.train_number = a.train_number
+                       AND m.stop_order > a.stop_order
+                       AND m.stop_order < b.stop_order
+                       AND m.halt_minutes > 0) AS stops_between
+            FROM schedule_stops AS a
+            JOIN schedule_stops AS b ON b.train_number = a.train_number
+            LEFT JOIN trains AS t ON t.number = a.train_number
+            WHERE a.station_code = ? AND b.station_code = ?
+              AND a.stop_order < b.stop_order
+              AND a.departure IS NOT NULL
+              AND b.arrival   IS NOT NULL
+              AND (a.halt_minutes IS NULL OR a.halt_minutes > 0)
+              AND (b.halt_minutes IS NULL OR b.halt_minutes > 0){date_filter}
+            GROUP BY a.train_number
+            HAVING a.stop_order = MIN(a.stop_order)
+            ORDER BY a.departure
+            """,
+            params,
+        ).fetchall()
+        return [DirectRun(**dict(r)) for r in rows]
+
+    def get_bookable_stations(self) -> list[tuple[str, str]]:
+        """``(code, name)`` for every station where some train makes a real halt.
+
+        Excludes stations that only ever appear as technical pass-throughs,
+        since no journey can begin or end at one. Sorted by code.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT DISTINCT s.station_code AS code, st.name AS name
+            FROM schedule_stops AS s
+            JOIN stations AS st ON st.code = s.station_code
+            WHERE s.halt_minutes IS NULL OR s.halt_minutes > 0
+            ORDER BY s.station_code
+            """
+        ).fetchall()
+        return [(r["code"], r["name"]) for r in rows]
 
     def get_all_train_numbers(self) -> list[str]:
         """Return every train number that has at least one scheduled stop.

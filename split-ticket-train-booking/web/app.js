@@ -54,14 +54,28 @@ function renderOptions(){
   if(!visible.length&&options.length){$('adjust-search').textContent='Reset filters';$('adjust-search').addEventListener('click',()=>resetFilters());}else bindAdjust();
   for(const button of document.querySelectorAll('.details-toggle'))button.addEventListener('click',()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));$(button.getAttribute('aria-controls')).hidden=expanded;button.innerHTML=`${expanded?'Journey details':'Hide details'} <span>${expanded?'↓':'↑'}</span>`;});
 }
+const hhmm = value => String(value ?? '').slice(0,5);
+function renderDirect(result){
+  const list=result.trains;
+  $('direct-count').textContent=list.length?`${list.length} direct train${list.length===1?'':'s'}`:'';
+  $('direct-list').innerHTML=list.length?list.map(t=>{
+    const offset=t.day_offset?`<span class="day-offset">+${t.day_offset}d</span>`:'';
+    const halts=`${t.halts} intermediate halt${t.halts===1?'':'s'}`;
+    return `<article class="direct-row"><div class="direct-train"><strong>${escapeHTML(t.train_number)}</strong><span>${escapeHTML(t.train_name)}</span></div><div class="direct-times"><span>${hhmm(t.departure)}</span><i>→</i><span>${hhmm(t.arrival)}${offset}</span></div><div class="direct-meta"><span>${t.duration_minutes==null?'Duration unknown':duration(t.duration_minutes)}</span><span>${halts}</span></div></article>`;
+  }).join(''):`<p class="direct-empty">No train runs ${escapeHTML(nameOf(result.origin))} → ${escapeHTML(nameOf(result.destination))} without a change. A split journey may still get you there.</p>`;
+  $('direct-trains').hidden=false;
+}
+
 $('search-form').addEventListener('submit',async event=>{
   event.preventDefault();if(busy)return;
   const query={origin:$('origin').value.trim().toUpperCase(),destination:$('destination').value.trim().toUpperCase(),date:$('date').value,travel_class:$('travel-class').value,max_transfers:Number($('max-transfers').value)};
   if(query.origin===query.destination){$('status').className='status error';$('status').textContent='Choose two different stations for your journey.';$('destination').focus();return;}
-  busy=true;$('search-button').disabled=true;$('search-button').innerHTML='Finding journeys…';$('status').className='status';$('status').innerHTML='<span class="loading-icon" aria-hidden="true"></span> Exploring routes and comparing time, fare, and transfer comfort…';$('results').setAttribute('aria-busy','true');$('results').innerHTML='<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';$('search-summary').hidden=true;$('sort-control').hidden=true;
+  busy=true;$('search-button').disabled=true;$('search-button').innerHTML='Finding journeys…';$('status').className='status';$('status').innerHTML='<span class="loading-icon" aria-hidden="true"></span> Exploring routes and comparing time, fare, and transfer comfort…';$('results').setAttribute('aria-busy','true');$('results').innerHTML='<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';$('search-summary').hidden=true;$('sort-control').hidden=true;$('direct-trains').hidden=true;
   try{
-    const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(query)});
+    const post=path=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(query)});
+    const [response,directResponse]=await Promise.all([post('/api/search'),post('/api/direct').catch(()=>null)]);
     const result=await response.json();if(!response.ok)throw new Error(result.error||'The search could not be completed.');
+    if(directResponse&&directResponse.ok)renderDirect(await directResponse.json());else $('direct-trains').hidden=true;
     options=result.options;lastQuery=query;renderOptions();if(!initialSearch&&window.matchMedia('(max-width:720px)').matches)document.querySelector('.results-section').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});$('status').textContent=result.failure_reason?`No matching itinerary: ${result.failure_reason}`:'';
     $('summary-content').innerHTML=`<p>${result.considered} candidates considered · ${result.duplicates} duplicates merged · ${result.pruned} pruned by constraints · ${result.seconds.toFixed(2)}s search time</p>${result.effort.map(e=>`<p><strong>${escapeHTML(e.agent_name)}</strong> explored ${e.nodes_expanded.toLocaleString()} states · ${e.found?'Itinerary found':'No itinerary found'}</p>`).join('')}<p>Results are evaluated for fare, time, and transfer comfort, then ranked by the coordinator. This is a summary of completed work, not a live negotiation trace.</p>`;$('search-summary').hidden=false;
   }catch(error){options=[];lastQuery=null;$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';$('results-subtitle').textContent='We couldn’t complete this search.';}

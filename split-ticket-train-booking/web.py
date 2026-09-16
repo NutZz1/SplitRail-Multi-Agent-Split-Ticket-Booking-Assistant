@@ -53,6 +53,30 @@ def search(system, payload):
             "effort": [asdict(e) for e in rec.search_effort_summary]}
 
 
+def direct_trains(system, payload):
+    """Every train that actually runs origin -> destination without a change.
+
+    Unlike :func:`search`, this reads the timetable alone, so it covers the
+    whole network rather than the six trains that have simulated seat and
+    run-date data. Results are therefore not filtered by travel date.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Please provide a journey query.")
+    origin = validate_station(str(payload.get("origin", "")), system.store)
+    destination = validate_station(str(payload.get("destination", "")), system.store)
+    if origin == destination:
+        raise ValueError("Choose two different stations for your journey.")
+    runs = system.store.get_direct_trains(origin, destination)
+    return {"trains": [{"train_number": r.train_number,
+                        "train_name": r.train_name or r.train_number,
+                        "departure": r.from_departure, "arrival": r.to_arrival,
+                        "day_offset": (r.to_day - r.from_day)
+                                      if r.from_day is not None and r.to_day is not None else None,
+                        "duration_minutes": r.duration_minutes,
+                        "halts": r.stops_between} for r in runs],
+            "origin": origin, "destination": destination}
+
+
 def make_handler(system):
     class Handler(BaseHTTPRequestHandler):
         def send(self, status, data, content_type="application/json"):
@@ -68,11 +92,8 @@ def make_handler(system):
         def do_GET(self):
             path = urlparse(self.path).path
             if path == "/api/meta":
-                subset = json.loads((WEB.parent / "data_source/demo_subset.json").read_text())
-                codes = {s["station_code"] for stops in subset["schedules"].values() for s in stops
-                         if s.get("halt_minutes", 0) or s.get("arrival") is None or s.get("departure") is None}
-                stations = [{"code": code, "name": system.store.get_station(code).name}
-                            for code in sorted(codes) if system.store.get_station(code)]
+                stations = [{"code": code, "name": name}
+                            for code, name in system.store.get_bookable_stations()]
                 return self.send(200, {"stations": stations, "dates": system.store.get_run_date_range(),
                                        "trains": len(system.store.get_demo_train_numbers())})
             files = {"/": ("index.html", "text/html; charset=utf-8"),
@@ -84,14 +105,15 @@ def make_handler(system):
             self.send(200, (WEB / filename).read_bytes(), mime)
 
         def do_POST(self):
-            if self.path != "/api/search":
+            handlers = {"/api/search": search, "/api/direct": direct_trains}
+            if self.path not in handlers:
                 return self.send(404, {"error": "Not found"})
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 if not 0 < length <= 8192:
                     raise ValueError("Invalid request size.")
                 payload = json.loads(self.rfile.read(length))
-                result = search(system, payload)
+                result = handlers[self.path](system, payload)
             except (ValueError, TypeError) as exc:
                 return self.send(400, {"error": str(exc)})
             except Exception:

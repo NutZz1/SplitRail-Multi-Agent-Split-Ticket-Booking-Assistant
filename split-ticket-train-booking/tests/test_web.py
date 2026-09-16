@@ -4,7 +4,7 @@ import json
 import pytest
 
 from cli import build_system
-from web import search
+from web import direct_trains, search
 
 
 @pytest.fixture(scope="module")
@@ -43,3 +43,30 @@ def test_hard_class_requirement_returns_no_results(web_system):
 def test_invalid_queries_are_rejected(web_system, change):
     with pytest.raises(ValueError):
         search(web_system, {**BASE, **change})
+
+
+# --- direct-train endpoint -------------------------------------------------
+def test_direct_trains_returns_real_runs(web_system):
+    """The whole network is covered, not just the six demo trains."""
+    result = direct_trains(web_system, {"origin": "HWH", "destination": "NDLS"})
+    numbers = {t["train_number"] for t in result["trains"]}
+    assert "12301" in numbers  # Howrah - New Delhi Rajdhani
+    assert all(t["duration_minutes"] > 0 for t in result["trains"])
+
+
+def test_direct_trains_respects_direction(web_system):
+    forward = {t["train_number"] for t in
+               direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})["trains"]}
+    backward = {t["train_number"] for t in
+                direct_trains(web_system, {"origin": "MAS", "destination": "SBC"})["trains"]}
+    assert forward and backward and not forward & backward
+
+
+def test_direct_trains_rejects_identical_stations(web_system):
+    with pytest.raises(ValueError):
+        direct_trains(web_system, {"origin": "SBC", "destination": "SBC"})
+
+
+def test_direct_trains_rejects_unknown_station(web_system):
+    with pytest.raises(ValueError):
+        direct_trains(web_system, {"origin": "SBC", "destination": "NOPE"})

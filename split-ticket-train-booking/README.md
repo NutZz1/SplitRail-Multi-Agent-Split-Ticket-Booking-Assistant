@@ -70,7 +70,14 @@ for the browser interface (`python web.py`) and its first-launch setup.
 committed. The database builder falls back to the schedules in the committed
 `demo_subset.json`, so the six-train demo works directly after cloning.
 
-1. Optionally provide `schedules_clean.json` in `data_source/` for the full network.
+1. Optionally provide `schedules_clean.json` in `data_source/` for the full
+   network. From a raw flat stop-record dump, generate it with:
+
+       python data_source/convert_schedules.py <raw schedules.json>
+
+   The converter groups stops by train (route order comes from the raw `id`),
+   turns the `"None"` time strings into nulls, and derives `halt_minutes`,
+   which is `null` at termini and `0` for a technical pass-through.
 2. Build the database:
 
        python data_source/build_sqlite_db.py
@@ -90,3 +97,12 @@ Source layout:
     tests/              pytest suite (some graph/count checks require full schedules)
     web.py              local HTTP server and validated search adapter
     web/                responsive browser interface
+    data_source/convert_schedules.py  raw stop dump -> schedules_clean.json
+
+`RailDataStore.get_direct_trains(origin, destination)` lists the trains that
+run a pair without a change. It respects direction (a train is only returned
+when it departs the origin before reaching the destination) and excludes
+technical pass-throughs at both ends, since a train that does not halt cannot
+be boarded. Termini are kept: they have no halt duration but are boardable.
+It reads the timetable only, so it covers every train in the database rather
+than the six with simulated availability.
