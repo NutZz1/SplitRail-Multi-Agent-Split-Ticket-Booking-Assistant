@@ -1,10 +1,10 @@
-"""RailRadar provider: trains between stations, plus live running status.
+"""RailRadar provider: the trains that run between two stations.
 
 RailRadar (https://railradar.in) is a keyed third-party API over Indian
 Railways data. It is not an official Indian Railways service -- the official
 platform, CRIS Pravah, is restricted to partner organisations -- but unlike
 the erail.in scraper it offers a documented JSON contract, a support contact,
-and live delay information.
+and current station codes, which matter after a station is renamed.
 
 Set ``RAILRADAR_API_KEY`` to enable it. Without a key this module reports
 itself unconfigured and callers fall back to erail.in and then to the bundled
@@ -21,7 +21,6 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
 from datetime import date as date_cls
 from typing import Optional
 
@@ -38,32 +37,6 @@ def api_key() -> Optional[str]:
 
 def is_configured() -> bool:
     return api_key() is not None
-
-
-@dataclass(frozen=True)
-class LiveStatus:
-    """Where a train is right now, and how late it is running."""
-
-    train_number: str
-    train_name: str
-    status: Optional[str]
-    delay_minutes: Optional[int]
-    current_station: Optional[str]
-    next_halt: Optional[str]
-    last_updated: Optional[str]
-
-    @property
-    def is_on_time(self) -> bool:
-        return self.delay_minutes is not None and self.delay_minutes <= 0
-
-    def summary(self) -> str:
-        if self.delay_minutes is None:
-            return "Running status unavailable"
-        if self.delay_minutes <= 0:
-            return "On time"
-        hours, minutes = divmod(self.delay_minutes, 60)
-        late = f"{hours}h {minutes:02d}m" if hours else f"{minutes} min"
-        return f"Running {late} late"
 
 
 def _request(path: str, params: dict) -> dict:
@@ -105,7 +78,6 @@ def _to_live_train(entry: dict, origin: str, destination: str) -> Optional[LiveT
 
     duration = entry.get("duration")
     hours, minutes = divmod(int(duration), 60) if duration else (0, 0)
-    live = entry.get("live") or {}
     return LiveTrain(
         number=str(number), name=train.get("name") or str(number),
         from_code=origin, from_name=origin, to_code=destination, to_name=destination,
@@ -114,7 +86,7 @@ def _to_live_train(entry: dict, origin: str, destination: str) -> Optional[LiveT
         running_days=day_mask(train.get("runDays")),
         train_origin_code=origin, train_dest_code=destination,
         halts=entry.get("totalHaltsBetween"), distance_km=entry.get("distance"),
-        delay_minutes=live.get("delayMinutes"), provider=PROVIDER,
+        provider=PROVIDER,
     )
 
 
@@ -130,24 +102,8 @@ def fetch_between_stations(origin: str, destination: str,
     data = _request(f"/trains/between/{urllib.parse.quote(origin)}/{urllib.parse.quote(destination)}",
                     {"date": when.isoformat() if when else None,
                      "byCity": "true" if by_city else None})
-    trains = [t for t in (_to_live_train(e, origin, destination)
-                          for e in data.get("trains") or []) if t]
-    if not trains:
-        raise LiveLookupError("RailRadar found no direct trains for this pair.")
-    return trains
-
-
-def fetch_live_status(train_number: str, when: Optional[date_cls] = None) -> LiveStatus:
-    """Where ``train_number`` is now, and its current delay."""
-    data = _request(f"/trains/{urllib.parse.quote(train_number)}/live",
-                    {"date": when.isoformat() if when else None, "haltsOnly": "true"})
-    location = data.get("currentLocation") or {}
-    next_halt = data.get("nextHalt") or {}
-    return LiveStatus(
-        train_number=str(data.get("trainNumber") or train_number),
-        train_name=data.get("trainName") or "",
-        status=data.get("status"), delay_minutes=data.get("delayMinutes"),
-        current_station=location.get("stationCode"),
-        next_halt=next_halt.get("stationName") or next_halt.get("stationCode"),
-        last_updated=data.get("lastUpdatedAt"),
-    )
+    # An empty list means no direct train runs this pair. That is an answer,
+    # not a failure: raising here would fall back to the 2020 snapshot and
+    # show trains that may no longer run.
+    return [t for t in (_to_live_train(e, origin, destination)
+                        for e in data.get("trains") or []) if t]

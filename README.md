@@ -42,7 +42,7 @@ services while returning no bookable itinerary, and the interface says so.
 ### In the interface
 
 - Search by station code with station-name suggestions, travel date, class, and maximum transfers.
-- See **Trains on this line**: every train that actually runs your origin → destination without a change, with departure, arrival, run time, and the days it runs. This prefers **live data** (RailRadar when a key is set, otherwise erail.in), filtered to the services running on your travel date, and falls back to the bundled timetable when live sources are unreachable. Where the provider reports it, each train also shows its current delay. The panel always states which source answered.
+- See **Trains on this line**: every train that actually runs your origin → destination without a change, with departure, arrival, run time, and the days it runs. This prefers **live data** (RailRadar when a key is set, otherwise erail.in), narrowed to trains that genuinely run between the two stations you asked for and to the services running on your travel date. It falls back to the bundled timetable only when live sources are unreachable. The panel always states which source answered.
 - Compare direct and split journeys with estimated fares, total duration, and availability labels.
 - Sort by recommendation, fare, duration, or transfers; filter for confirmed seats or no same-train seat changes.
 - Expand each itinerary for coach details, night transfers, leg fares, and comfort penalties.
@@ -61,11 +61,11 @@ filtered to the weekday you are travelling.
 
 Sources are tried in order, and the panel always names the one that answered:
 
-| Order | Source | Needs a key | Gives delays |
+| Order | Source | Needs a key | Notes |
 |---|---|---|---|
-| 1 | **RailRadar** (`api.railradar.in`) | yes | yes |
-| 2 | **erail.in** | no | no |
-| 3 | Bundled 2020 timetable | no | no |
+| 1 | **RailRadar** (`api.railradar.in`) | yes | current codes, documented JSON |
+| 2 | **erail.in** | no | current, but scraped |
+| 3 | Bundled 2020 timetable | no | offline fallback only |
 
 Neither live source is official. Indian Railways' own API platform, **CRIS
 Pravah**, is restricted to partner organisations and has no public sign-up, so
@@ -89,14 +89,26 @@ an unlimited one; every search spends one request.
 
 Run `python web.py --offline` to skip live lookups entirely.
 
-Two things to know about live results:
+### Getting the right trains, not the right city
 
-- **erail widens a query to nearby stations in the same city.** A search from
-  SBC can return services departing SMVB or YPR. Each row shows the station
-  code actually matched when it differs from the one you asked for. RailRadar
-  makes this explicit (`byCity`), and SplitRail leaves it off.
-- **Running days are reported for the boarding station**, not the train's own
-  origin, so an overnight train shows the day you actually board.
+Left alone, erail answers for the whole metropolitan area. A request for
+NDLS → BCT comes back with **33 trains, 32 of which run from Hazrat
+Nizamuddin or into Bandra Terminus** rather than the stations asked for.
+SplitRail narrows results to the requested pair, so SBC → MAS returns the 11
+trains that actually run it rather than 31 spanning SMVB, YPR and PER.
+RailRadar exposes the same behaviour as a `byCity` flag, which is left off.
+
+Narrowing matches on the **station name erail resolves the request to**, not
+just the code, because codes change: `BCT` is now `MMCT`. A plain code
+comparison would return nothing for NDLS → BCT even though the Mumbai
+Rajdhani still runs it.
+
+**No direct train is an answer, not a failure.** When a live source replies
+with nothing, SplitRail reports that rather than falling back to the 2020
+snapshot, which could otherwise show trains that no longer run.
+
+**Running days are reported for the boarding station**, not the train's own
+origin, so an overnight train shows the day you actually board.
 
 The test suite never touches the network: both providers are covered against
 saved or schema-shaped responses, and the two live calls are skipped unless
@@ -110,6 +122,6 @@ python cli.py --demo --no-pool
 pytest
 ```
 
-With the committed six-train subset the suite reports **276 passed, 8 failed**: those 8 assertions need the full timetable (fixed full-graph expansion counts and multi-candidate search statistics). Load the full network as below and the suite is **337 passed, 2 skipped** (the skips are the opt-in live-network tests).
+With the committed six-train subset the suite reports **276 passed, 8 failed**: those 8 assertions need the full timetable (fixed full-graph expansion counts and multi-candidate search statistics). Load the full network as below and the suite is **335 passed, 2 skipped** (the skips are the opt-in live-network tests).
 
 See [data provenance and backend documentation](split-ticket-train-booking/README.md) for the real-versus-synthetic breakdown and search implementation.

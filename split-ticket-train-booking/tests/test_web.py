@@ -146,14 +146,14 @@ def test_railradar_is_preferred_when_configured(web_system, monkeypatch):
                       to_code="MAS", to_name="MAS", departure="16:10", arrival="21:25",
                       travel_time="05:15", running_days="1111111",
                       train_origin_code="SBC", train_dest_code="MAS",
-                      halts=2, delay_minutes=12, provider="railradar.in")
+                      halts=2, provider="railradar.in")
     monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
     monkeypatch.setattr(railradar, "is_configured", lambda: True)
     monkeypatch.setattr(railradar, "fetch_between_stations", lambda *a, **k: [train])
     monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: pytest.fail("erail should not be called"))
     result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
     assert result["provider"] == "railradar.in"
-    assert result["trains"][0]["delay_minutes"] == 12
+    assert result["trains"][0]["halts"] == 2
 
 
 def test_falls_back_to_erail_when_railradar_fails(web_system, monkeypatch):

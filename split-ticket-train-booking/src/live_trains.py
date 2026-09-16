@@ -67,7 +67,6 @@ class LiveTrain:
     # Fields no provider is required to supply.
     halts: Optional[int] = None          # intermediate halts on this leg
     distance_km: Optional[float] = None
-    delay_minutes: Optional[int] = None  # live delay, when the provider knows it
     provider: str = "erail.in"
 
     @property
@@ -126,8 +125,42 @@ def _parse_train(fields: list[str]) -> Optional[LiveTrain]:
     )
 
 
-def parse_between_stations(payload: str) -> list[LiveTrain]:
+def _parse_header(block: str) -> tuple[str, str, str, str]:
+    """``(origin_code, origin_name, destination_code, destination_name)``.
+
+    erail echoes the stations it resolved the request to. That resolution is
+    what makes renamed stations work: asking for ``BCT`` comes back as
+    ``Mumbai Central``, the name its records now carry under ``MMCT``.
+    """
+    fields = [f for f in block.split("~") if f]
+    if len(fields) < 4:
+        raise LiveLookupError("The live timetable returned an unreadable response.")
+    return fields[0], fields[1], fields[2], fields[3]
+
+
+def _serves(train: LiveTrain, code: str, name: str, *, at_origin: bool) -> bool:
+    """Does this record really start (or end) at the station that was asked for?
+
+    Matches on the resolved station *name* first, so a renamed station still
+    matches, and falls back to the code.
+    """
+    got_code = train.from_code if at_origin else train.to_code
+    got_name = train.from_name if at_origin else train.to_name
+    return got_code == code or got_name.strip().lower() == name.strip().lower()
+
+
+def parse_between_stations(payload: str, origin: Optional[str] = None,
+                           destination: Optional[str] = None) -> list[LiveTrain]:
     """Turn a raw ``getTrains.aspx`` body into :class:`LiveTrain` records.
+
+    When ``origin`` and ``destination`` are given, records are narrowed to
+    trains that genuinely run between those two stations. erail otherwise
+    widens a search to every station in the same city, which is badly
+    misleading: a request for NDLS -> BCT comes back with 33 trains, of which
+    32 run from Hazrat Nizamuddin or into Bandra Terminus instead.
+
+    An empty list is a valid answer -- "no direct train runs this pair" -- and
+    is not an error. Only a malformed or refused response raises.
 
     Split out from the network call so it can be tested against saved
     responses without touching the network.
@@ -141,6 +174,8 @@ def parse_between_stations(payload: str) -> list[LiveTrain]:
         if head.startswith(marker):
             raise LiveLookupError(message)
 
+    origin_code, origin_name, dest_code, dest_name = _parse_header(blocks[0])
+
     trains = []
     for block in blocks:
         parts = block.split("~^")
@@ -149,8 +184,11 @@ def parse_between_stations(payload: str) -> list[LiveTrain]:
         train = _parse_train([f for f in parts[1].split("~") if f])
         if train is not None:
             trains.append(train)
-    if not trains:
-        raise LiveLookupError("The live timetable returned no usable records.")
+
+    if origin is not None and destination is not None:
+        trains = [t for t in trains
+                  if _serves(t, origin_code, origin_name, at_origin=True)
+                  and _serves(t, dest_code, dest_name, at_origin=False)]
     return trains
 
 
@@ -161,9 +199,10 @@ def fetch_between_stations(origin: str, destination: str, timeout: float = 8.0) 
     "fall back to the local timetable": network failure, a slow response, or
     one of erail's own error messages.
 
-    erail widens a query to nearby stations in the same city, so a request for
-    SBC can return services from SMVB or YPR. Each record therefore carries
-    its own ``from_code``/``to_code``; do not assume they match the request.
+    Results are narrowed to trains that actually run between the two stations
+    asked for; erail otherwise widens the search to the whole city. An empty
+    list means no direct train runs the pair, which is an answer rather than
+    a failure.
     """
     query = urllib.parse.urlencode({
         "Station_From": origin, "Station_To": destination,
@@ -175,4 +214,4 @@ def fetch_between_stations(origin: str, destination: str, timeout: float = 8.0) 
             payload = response.read().decode("utf-8", errors="replace")
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise LiveLookupError(f"Could not reach the live timetable: {exc}") from exc
-    return parse_between_stations(payload)
+    return parse_between_stations(payload, origin, destination)

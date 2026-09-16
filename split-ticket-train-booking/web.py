@@ -74,9 +74,13 @@ def _live_direct(origin, destination, when):
     """Direct trains from the best available live provider.
 
     RailRadar is tried first when a key is configured: it is a documented API
-    that also reports delays. erail.in is the keyless fallback. Returns the
-    trains, the number hidden because they run on other days, and the name of
-    the provider that answered.
+    that uses current station codes. erail.in is the keyless fallback. Returns
+    the trains, the number hidden because they run on other days, and the name
+    of the provider that answered.
+
+    A provider that answers with no trains has answered: the pair has no
+    direct service. Only a provider that fails is skipped, so a working live
+    source is never overridden by the 2020 snapshot.
     """
     problems = []
     for name, call in (("railradar", lambda: railradar.fetch_between_stations(origin, destination, when)),
@@ -94,7 +98,6 @@ def _live_direct(origin, destination, when):
                     "departure": t.departure, "arrival": t.arrival,
                     "day_offset": None, "duration_minutes": t.duration_minutes,
                     "halts": t.halts, "distance_km": t.distance_km,
-                    "delay_minutes": t.delay_minutes,
                     "running_days": [d[:3] for d in t.running_day_names()]}
                    for t in running]
         return payload, len(trains) - len(running), t_provider(trains)

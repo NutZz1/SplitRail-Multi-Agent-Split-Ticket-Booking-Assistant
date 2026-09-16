@@ -97,7 +97,7 @@ Source layout:
     tests/              pytest suite (some graph/count checks require full schedules)
     web.py              local HTTP server and validated search adapter
     src/live_trains.py  erail.in client for currently-running services
-    src/railradar.py    RailRadar client: trains between stations + live status
+    src/railradar.py    RailRadar client: trains between two stations
     web/                responsive browser interface
     data_source/convert_schedules.py  raw stop dump -> schedules_clean.json
 
@@ -140,11 +140,13 @@ database; `web.py` does, and reports which source answered.
 `src/railradar.py` wraps [RailRadar](https://railradar.in), a keyed JSON API
 over Indian Railways data. It is preferred over the erail.in scraper when
 `RAILRADAR_API_KEY` is set, because it is a documented contract with a support
-contact and it reports live delays. It is still **not** an official service:
+contact and current station codes. It is still **not** an official service:
 CRIS Pravah, the official platform, is restricted to partner organisations.
 
-    GET /v1/trains/between/{from}/{to}   trains on a pair, optional live delay
-    GET /v1/trains/{number}/live         position, delay, next halt
+    GET /v1/trains/between/{from}/{to}   trains on a pair
+
+`byCity` is left off, so results are the two stations requested rather than
+every station in their metropolitan areas.
 
 Responses use the envelope `{"success", "data", "meta"}`; a `success: false`
 body is raised as `LiveLookupError` rather than read as data, so the caller

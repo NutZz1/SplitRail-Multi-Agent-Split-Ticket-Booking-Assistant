@@ -36,17 +36,6 @@ BETWEEN = {
     "meta": {"traceId": "x", "timestamp": "2026-09-16T10:00:00+05:30"},
 }
 
-LIVE = {
-    "success": True,
-    "data": {"trainNumber": "12008", "trainName": "Shatabdi Express",
-             "status": "RUNNING", "delayMinutes": 12,
-             "lastUpdatedAt": "2026-09-16T17:02:00+05:30",
-             "currentLocation": {"stationCode": "KPD", "sequence": 5, "speedKmh": 88},
-             "nextHalt": {"stationCode": "AJJ", "stationName": "Arakkonam", "sequence": 6}},
-    "meta": {},
-}
-
-
 @pytest.fixture
 def keyed(monkeypatch):
     monkeypatch.setenv(railradar.API_KEY_ENV, "rr_live_test")
@@ -76,7 +65,6 @@ def test_between_stations_maps_fields(keyed, monkeypatch):
     assert shatabdi.departure == "16:10" and shatabdi.arrival == "21:25"
     assert shatabdi.duration_minutes == 315       # from duration, not a time subtraction
     assert shatabdi.halts == 2
-    assert shatabdi.delay_minutes == 12
     assert shatabdi.provider == "railradar.in"
 
 
@@ -88,11 +76,6 @@ def test_run_days_become_a_monday_first_mask(keyed, monkeypatch):
     assert brindavan.runs_daily
 
 
-def test_missing_live_block_is_not_an_error(keyed, monkeypatch):
-    _stub(monkeypatch, BETWEEN)
-    assert railradar.fetch_between_stations("SBC", "MAS")[1].delay_minutes is None
-
-
 def test_entries_without_required_fields_are_skipped(keyed, monkeypatch):
     monkeypatch.setattr(railradar, "_request",
                         lambda path, params: {"trains": [{"train": {"name": "No number"}},
@@ -100,29 +83,11 @@ def test_entries_without_required_fields_are_skipped(keyed, monkeypatch):
     assert [t.number for t in railradar.fetch_between_stations("SBC", "MAS")] == ["12008"]
 
 
-def test_empty_result_raises_so_callers_fall_back(keyed, monkeypatch):
+def test_no_trains_is_an_answer_not_an_error(keyed, monkeypatch):
+    """An empty result means no direct service, so callers must not fall back
+    to the 2020 snapshot and show trains that may no longer run."""
     monkeypatch.setattr(railradar, "_request", lambda path, params: {"trains": []})
-    with pytest.raises(LiveLookupError):
-        railradar.fetch_between_stations("SBC", "MAS")
-
-
-def test_live_status_maps_fields(keyed, monkeypatch):
-    _stub(monkeypatch, LIVE)
-    status = railradar.fetch_live_status("12008")
-    assert status.delay_minutes == 12
-    assert status.current_station == "KPD"
-    assert status.next_halt == "Arakkonam"
-    assert not status.is_on_time
-    assert status.summary() == "Running 12 min late"
-
-
-@pytest.mark.parametrize("minutes,expected", [
-    (0, "On time"), (-3, "On time"), (45, "Running 45 min late"),
-    (90, "Running 1h 30m late"), (None, "Running status unavailable"),
-])
-def test_delay_summary_wording(minutes, expected):
-    status = railradar.LiveStatus("1", "T", "RUNNING", minutes, None, None, None)
-    assert status.summary() == expected
+    assert railradar.fetch_between_stations("SBC", "MAS") == []
 
 
 def test_api_error_becomes_lookup_error(keyed, monkeypatch):
@@ -152,8 +117,7 @@ def test_key_is_sent_as_bearer_and_not_in_the_url(keyed, monkeypatch):
         return FakeResponse()
 
     monkeypatch.setattr(railradar.urllib.request, "urlopen", capture)
-    with pytest.raises(LiveLookupError):
-        railradar.fetch_between_stations("SBC", "MAS")
+    railradar.fetch_between_stations("SBC", "MAS")
     assert seen["auth"] == "Bearer rr_live_test"
     assert "rr_live_test" not in seen["url"]
 

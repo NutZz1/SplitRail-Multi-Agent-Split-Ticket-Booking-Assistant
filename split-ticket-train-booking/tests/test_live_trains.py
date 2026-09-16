@@ -78,3 +78,43 @@ def test_empty_response_raises():
 def test_live_lookup_reaches_erail():
     trains = fetch_between_stations("SBC", "MAS")
     assert trains and all(t.number.isdigit() for t in trains)
+
+
+# --- narrowing to the stations actually asked for --------------------------
+NDLS_BCT = (Path(__file__).parent / "fixtures" / "erail_ndls_bct.txt").read_text()
+PURI_CDG = (Path(__file__).parent / "fixtures" / "erail_puri_cdg.txt").read_text()
+
+
+def test_unfiltered_results_include_other_city_stations():
+    """Without narrowing, erail answers for the whole metropolitan area."""
+    everything = parse_between_stations(NDLS_BCT)
+    assert len(everything) > 30
+    assert {t.from_code for t in everything} > {"NDLS"}   # NZM, DEE, DEC too
+
+
+def test_narrowing_keeps_only_the_requested_pair():
+    """NDLS -> BCT must not return trains from Nizamuddin or into Bandra."""
+    narrowed = parse_between_stations(NDLS_BCT, "NDLS", "BCT")
+    assert [t.number for t in narrowed] == ["12952"]
+
+
+def test_narrowing_follows_a_renamed_station():
+    """BCT was renamed MMCT. Matching on the resolved name still finds it.
+
+    A plain code comparison would return nothing here, because no current
+    record carries the code BCT any more.
+    """
+    train = parse_between_stations(NDLS_BCT, "NDLS", "BCT")[0]
+    assert train.to_code == "MMCT"           # current code
+    assert train.to_name == "Mumbai Central"  # the name BCT resolves to
+
+
+def test_no_direct_train_returns_empty_rather_than_raising():
+    """No direct service is an answer. Raising would fall back to 2020 data."""
+    assert parse_between_stations(PURI_CDG, "PURI", "CDG") == []
+
+
+def test_sbc_mas_narrows_to_the_station_asked_for(trains):
+    narrowed = parse_between_stations(FIXTURE.read_text(), "SBC", "MAS")
+    assert len(narrowed) < len(trains)
+    assert all(t.from_code == "SBC" and t.to_code == "MAS" for t in narrowed)
