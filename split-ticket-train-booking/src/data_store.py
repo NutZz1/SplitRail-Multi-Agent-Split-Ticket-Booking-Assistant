@@ -284,6 +284,31 @@ class RailDataStore:
         ).fetchone()
         return Station(**dict(row)) if row else None
 
+    def search_stations(self, query: str, limit: int = 20) -> list[Station]:
+        """Stations whose code or name contains ``query`` (case-insensitive).
+
+        Exact-code matches come first, then code-prefix matches, then the rest
+        alphabetically, so typing "SBC" surfaces Bangalore City before every
+        station whose name merely contains those letters. Empty query -> [].
+        """
+        q = query.strip().upper()
+        if not q:
+            return []
+        like = f"%{q}%"
+        rows = self._conn.execute(
+            """
+            SELECT code, name, state, zone, lat, lon
+            FROM stations
+            WHERE UPPER(code) LIKE ? OR UPPER(name) LIKE ?
+            ORDER BY
+              CASE WHEN UPPER(code) = ? THEN 0 WHEN UPPER(code) LIKE ? THEN 1 ELSE 2 END,
+              name
+            LIMIT ?
+            """,
+            (like, like, q, f"{q}%", limit),
+        ).fetchall()
+        return [Station(**dict(r)) for r in rows]
+
     def get_train(self, train_number: str) -> Optional[Train]:
         """Return the :class:`Train` for ``train_number``, or None if unknown.
 

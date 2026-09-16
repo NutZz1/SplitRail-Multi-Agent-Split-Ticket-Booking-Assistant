@@ -310,3 +310,15 @@ def test_demo_coverage_accessors(db):
     assert db.get_run_pattern("12658") == ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     assert db.get_run_pattern(NON_DEMO) == []
     assert db.get_run_date_range() == ("2026-09-10", "2026-09-25")
+
+
+def test_search_stations(db):
+    hits = db.search_stations("sbc")
+    assert hits and hits[0].code == "SBC"                      # exact code first
+    assert all("SBC" in s.code or "SBC" in s.name.upper() for s in hits)
+    by_name = db.search_stations("chennai", limit=50)
+    assert any(s.code == "MAS" for s in by_name)
+    assert len(db.search_stations("a", limit=5)) == 5          # limit respected
+    assert db.search_stations("   ") == []
+    assert db.search_stations("zzzzzzzz") == []
+    assert db.search_stations("'; DROP TABLE stations; --") == []
