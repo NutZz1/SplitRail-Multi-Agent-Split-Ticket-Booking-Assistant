@@ -15,32 +15,113 @@ agents -- a genuine bug should surface with its real traceback.
 from __future__ import annotations
 
 import argparse
+import asyncio
+import datetime as dt
+import logging
 import sys
+import time
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.agents.coordinator_agent import SAME_TRAIN_MAX_TRANSFERS_CAP  # noqa: E402
+from src.agents.coordinator_agent import SAME_TRAIN_MAX_TRANSFERS_CAP, CoordinatorAgent  # noqa: E402
+from src.agents.different_train_search_agent import DifferentTrainSearchAgent  # noqa: E402
+from src.agents.fare_time_agent import FareTimeAgent  # noqa: E402
+from src.agents.same_train_search_agent import SameTrainSearchAgent  # noqa: E402
+from src.agents.seat_transfer_agent import SeatTransferAgent  # noqa: E402
+from src.agents.worker_pool import SearchWorkerPool  # noqa: E402
 from src.data_store import RailDataStore  # noqa: E402
-from src.demo_scenarios import (  # noqa: E402  (shared with api/main.py -- one source of truth)
-    DEMO_SCENARIOS as _SCENARIOS,
-    VALID_CLASSES,
-    InputError,
-    System,
-    build_system,
-    demo_trains,
-    parse_class,
-    parse_date,
-    resolve_timed,
-    validate_station,
-)
+from src.fare_model import FARE_PER_KM  # noqa: E402
 from src.final_recommendation import FinalRecommendation, RankedItinerary  # noqa: E402
+from src.heuristic import RailHeuristic  # noqa: E402
+from src.rail_graph import build_graph  # noqa: E402
 from src.state import UserQuery  # noqa: E402
 
+VALID_CLASSES = tuple(FARE_PER_KM)  # SL, 3A, 2A, 1A, CC, EC, 2S
+
 
 # --------------------------------------------------------------------------- #
-# Input validation (CLI boundary only; shared validators live in src.demo_scenarios)
+# System setup
 # --------------------------------------------------------------------------- #
+@dataclass
+class System:
+    store: RailDataStore
+    heuristic: RailHeuristic
+    coordinator: CoordinatorAgent
+    pool: SearchWorkerPool | None
+    setup_seconds: float
+
+    def close(self) -> None:
+        if self.pool is not None:
+            self.pool.shutdown()
+        self.store.close()
+
+
+def build_system(db_path: str | Path | None = None, use_pool: bool = True) -> System:
+    """One store, one graph + heuristic (built once), one coordinator with all four agents."""
+    t0 = time.perf_counter()
+    # 121 timetable pairs have inconsistent day fields and are skipped with a
+    # warning each; the count is reported in the ready line instead of spamming.
+    logging.getLogger("src.rail_graph").setLevel(logging.ERROR)
+    store = RailDataStore(db_path)
+    heuristic = RailHeuristic(build_graph(store, verbose=False))
+    pool = None
+    if use_pool:
+        pool = SearchWorkerPool(store.db_path, max_workers=2)
+        pool.warm_up()
+    coordinator = CoordinatorAgent(
+        SameTrainSearchAgent(store, heuristic, pool=pool),
+        DifferentTrainSearchAgent(store, heuristic, pool=pool),
+        SeatTransferAgent(store),
+        FareTimeAgent(store),
+        store=store,
+    )
+    return System(store, heuristic, coordinator, pool, time.perf_counter() - t0)
+
+
+def resolve_timed(system: System, query: UserQuery) -> tuple[FinalRecommendation, float]:
+    t0 = time.perf_counter()
+    rec = asyncio.run(system.coordinator.resolve(query))
+    return rec, time.perf_counter() - t0
+
+
+# --------------------------------------------------------------------------- #
+# Input validation (CLI boundary only)
+# --------------------------------------------------------------------------- #
+class InputError(ValueError):
+    """Invalid user input; the message is meant for the screen."""
+
+
+def parse_date(text: str, store: RailDataStore) -> dt.date:
+    try:
+        date = dt.date.fromisoformat(text.strip())
+    except ValueError:
+        raise InputError(f"'{text}' is not a date in YYYY-MM-DD form.")
+    lo, hi = store.get_run_date_range() or ("?", "?")
+    if not (lo <= date.isoformat() <= hi):
+        raise InputError(f"{date} is outside the demo window: run-date data only covers {lo} to {hi}.")
+    return date
+
+
+def validate_station(code: str, store: RailDataStore) -> str:
+    code = code.strip().upper()
+    if not code:
+        raise InputError("Station code cannot be empty.")
+    if store.get_station(code) is None:
+        raise InputError(f"'{code}' is not a station code in railway.db (codes look like SBC, MAS, PURI).")
+    return code
+
+
+def parse_class(text: str) -> str | None:
+    text = text.strip().upper()
+    if not text:
+        return None
+    if text not in VALID_CLASSES:
+        raise InputError(f"'{text}' is not a class code. Valid: {', '.join(VALID_CLASSES)} (or blank for no preference).")
+    return text
+
+
 def parse_int(text: str, default: int, minimum: int, label: str) -> int:
     text = text.strip()
     if not text:
@@ -122,18 +203,38 @@ def format_demo_trains(store: RailDataStore) -> str:
         "",
         f"  {'train':<7}{'name':<48}{'from':<7}{'to':<7}runs on",
     ]
-    for t in demo_trains(store):
-        runs = "daily" if t["runs_daily"] else "/".join(t["runs_on"])
-        lines.append(f"  {t['number']:<7}{t['name'][:46]:<48}{t['from_station']:<7}{t['to_station']:<7}{runs}")
+    for tn in store.get_demo_train_numbers():
+        t = store.get_train(tn)
+        days = store.get_run_pattern(tn)
+        runs = "daily" if len(days) == 7 else "/".join(days)
+        lines.append(f"  {tn:<7}{(t.name if t else '?')[:46]:<48}{t.from_station_code if t else '?':<7}{t.to_station_code if t else '?':<7}{runs}")
     return "\n".join(lines)
 
 
 # --------------------------------------------------------------------------- #
 # Scripted demo
 # --------------------------------------------------------------------------- #
-#: (label, query, expectation) -- derived from the shared DemoScenario records.
-DEMO_SCENARIOS: tuple[tuple[str, UserQuery, str], ...] = tuple(
-    (f"{sc.id}. {sc.name}", sc.query, sc.description) for sc in _SCENARIOS
+DEMO_SCENARIOS: tuple[tuple[str, UserQuery, str], ...] = (
+    (
+        "1. SBC -> MAS on 12658 (Wed 16 Sep, runs daily)",
+        UserQuery("SBC", "MAS", dt.date(2026, 9, 16), max_transfers=2),
+        "expect: direct ride AND the BNC coach-switch split, both 340 min; direct ranked first",
+    ),
+    (
+        "2. PURI -> CDG (Tue 15 Sep: 12801 daily, 12217 Tue/Fri)",
+        UserQuery("PURI", "CDG", dt.date(2026, 9, 15), max_transfers=2),
+        "expect: 12801 to NDLS, 400-min connection, 12217 on to CDG -- from the different-train agent",
+    ),
+    (
+        "3. SBC -> MAS with a HARD chair-car (CC) requirement",
+        UserQuery("SBC", "MAS", dt.date(2026, 9, 16), travel_class_preference="CC", class_is_hard_constraint=True),
+        "expect: no itinerary -- 12658 carries no chair car; both agents explain why",
+    ),
+    (
+        "4. PURI -> CDG on a Wednesday (12217 does not run Wed)",
+        UserQuery("PURI", "CDG", dt.date(2026, 9, 16), max_transfers=2),
+        "expect: 12801 still runs but its only connection does not -- handled, not crashed",
+    ),
 )
 
 
