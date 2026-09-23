@@ -31,6 +31,29 @@ junction is usable (food, rest), and pricing it at the full rate would let
 a 400-minute connection swamp every other signal. With these weights the
 score reads as "the rupee cost of the trip including the passenger's time".
 
+Seat risk
+---------
+A leg whose seat status is RAC or WAITLIST rather than CONFIRMED is still
+bookable -- risk is a soft penalty here, never a hard exclusion -- but it
+is worth less to the passenger, so each risky leg adds ``W_RISK``.
+
+``W_RISK = 60`` is set in the same currency as everything else: at the
+Rs 2/minute value of time it says **a confirmed berth is worth about half
+an hour of extra journey time per leg**. Two cross-checks put that in the
+right band: a daytime platform change costs Rs 40 (20 min-equivalent x
+W_TRANSFER) and the night coach switch at BNC costs Rs 104, so one risky
+leg sits between a mild and a serious inconvenience -- which is the honest
+reading of RAC/WAITLIST: a real chance of travelling without a berth, not
+a certainty of it. It is also deliberately small against a long journey
+(PURI -> CDG scores ~5,600, so two risky legs move it ~2%): risk should
+decide between otherwise comparable options, not overturn a much faster
+or much cheaper one.
+
+The penalty is per leg and flat, so it does not currently distinguish RAC
+(boardable, shared side-berth) from WAITLIST (may not board at all), even
+though RAC is materially better. Splitting the two is the obvious future
+refinement.
+
 Missing fare
 ------------
 ``total_fare`` is None only when a ticket endpoint lacks coordinates (293
@@ -74,6 +97,8 @@ W_FARE: float = 1.0
 W_TRANSFER: float = 2.0
 #: Rs per minute of layover / dwell (half the moving-minute rate).
 W_LAYOVER: float = 1.0
+#: Rs-equivalent penalty per RAC / WAITLIST leg (see "Seat risk" in the docstring).
+W_RISK: float = 60.0
 
 #: Cap applied to the SAME-TRAIN sub-query's max_transfers (see docstring).
 SAME_TRAIN_MAX_TRANSFERS_CAP: int = 1
@@ -218,12 +243,20 @@ def combine_failure_reasons(same_p: ItineraryProposal, diff_p: ItineraryProposal
     )
 
 
-def final_score(transfer: TransferFeasibilityScore, fare_time: FareTimeScore, fare_for_scoring: float) -> float:
+def final_score(
+    transfer: TransferFeasibilityScore,
+    fare_time: FareTimeScore,
+    fare_for_scoring: float,
+    risky_legs: int = 0,
+) -> float:
+    """Weighted sum in rupee-equivalents; lower is better. ``risky_legs`` is the
+    number of RAC/WAITLIST tickets on the candidate (see "Seat risk" above)."""
     return (
         W_TIME * fare_time.moving_time_minutes
         + W_FARE * fare_for_scoring
         + W_TRANSFER * transfer.total_feasibility_penalty
         + W_LAYOVER * fare_time.layover_minutes
+        + W_RISK * risky_legs
     )
 
 
@@ -240,7 +273,8 @@ def rank_candidates(
     for c, t, f in zip(candidates, transfer_scores, fare_scores):
         missing = f.total_fare is None
         fare_for_scoring = imputed_fare if missing else f.total_fare  # type: ignore[assignment]
-        ranked.append(RankedItinerary(c, t, f, final_score(t, f, fare_for_scoring), fare_imputed=missing))
+        score = final_score(t, f, fare_for_scoring, risky_legs=c.risky_leg_count)
+        ranked.append(RankedItinerary(c, t, f, score, fare_imputed=missing))
 
     def sort_key(r: RankedItinerary) -> tuple:
         f = r.fare_time_score

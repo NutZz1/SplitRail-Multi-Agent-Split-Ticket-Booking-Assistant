@@ -24,6 +24,7 @@ import pytest
 from src.agents.coordinator_agent import (
     W_FARE,
     W_LAYOVER,
+    W_RISK,
     W_TIME,
     W_TRANSFER,
     CoordinatorAgent,
@@ -71,8 +72,8 @@ class TestScenario1_HappyPath_DirectBeatsSplitOnMerit:
         """SBC -> MAS on 12658: both the direct ride and the BNC coach-switch split are
         found (they tie on moving time, 340 min); the direct ride is ranked #1 with a
         lower score, and the entire gap is explained by the split's transfer penalty
-        (11-position coach walk at BNC, boarding at 23:00 = night) minus its small
-        fare saving."""
+        (11-position coach walk at BNC, boarding at 23:00 = night) plus its one RAC
+        leg, minus its small fare saving."""
         rec = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2))
         assert rec.found
         by_t = {o.candidate.transfer_count: o for o in rec.ranked_options}
@@ -82,14 +83,18 @@ class TestScenario1_HappyPath_DirectBeatsSplitOnMerit:
         assert direct.transfer_score.total_feasibility_penalty == 0
         assert split.transfer_score.total_feasibility_penalty > 0
         assert split.candidate.split_stations == ("BNC",)
-        # the score gap is exactly the transfer term plus the fare difference
+        # the score gap is exactly the transfer term + the risk term + the fare difference
+        assert direct.candidate.risky_leg_count == 0      # CONFIRMED end to end
+        assert split.candidate.risky_leg_count == 1       # SBC->BNC in S1 is RAC
         gap = split.final_score - direct.final_score
         expected_gap = (W_TRANSFER * split.transfer_score.total_feasibility_penalty
+                        + W_RISK * split.candidate.risky_leg_count
                         + W_FARE * (split.fare_time_score.total_fare - direct.fare_time_score.total_fare))
         assert gap == pytest.approx(expected_gap, abs=1e-6)
         summary("1. direct beats split on merit", rec,
                 f"direct {direct.final_score:.1f} vs split {split.final_score:.1f}; gap {gap:.1f} = "
                 f"{W_TRANSFER}x penalty {split.transfer_score.total_feasibility_penalty:.0f} "
+                f"+ {W_RISK}x{split.candidate.risky_leg_count} risky leg "
                 f"+ fare diff {split.fare_time_score.total_fare - direct.fare_time_score.total_fare:+.2f}")
 
 
@@ -193,19 +198,17 @@ class TestScenario5_TotalFailureShortCircuit:
 
 
 # =========================================================================== #
-class TestScenario6_RacWaitlistSurfacesButIsNotScored:
-    def test_risky_candidate_is_ranked_and_score_ignores_seat_status(self, coordinator, store):
+class TestScenario6_RacWaitlistSurfacesAndIsPriced:
+    def test_risky_candidate_is_ranked_and_its_risk_is_priced(self, coordinator, store):
         """PURI -> CDG's recommended itinerary uses real synthetic-availability statuses
         RAC (12801 PURI->NDLS, coach S1) and WAITLIST (12217 NDLS->CDG, coach S1).
         By design RAC/WAITLIST are soft risk, not hard exclusion, so the candidate
         appears in ranked_options with the statuses on its tickets.
 
-        FINDING: final_score does NOT account for seat status. The score is exactly
-        W_TIME*moving + W_FARE*fare + W_TRANSFER*penalty + W_LAYOVER*layover and no
-        term reads Ticket.status; neither FareTimeAgent nor SeatTransferAgent uses
-        it. Ticket.is_risky / CandidateItinerary.is_risky exist and are surfaced,
-        but the design's 'risk_penalty' was never implemented. This test documents
-        that gap rather than hiding it."""
+        Seat status is now PRICED as well as surfaced: the coordinator adds
+        W_RISK per risky leg, so this itinerary carries 2 x W_RISK. Risk remains a
+        soft penalty -- the candidate is still ranked, never excluded. (Earlier
+        revisions tracked status but ignored it in the score; that gap is closed.)"""
         rec = resolve(coordinator, UserQuery("PURI", "CDG", TUE, max_transfers=2))
         assert rec.found
         best = rec.best
@@ -215,13 +218,15 @@ class TestScenario6_RacWaitlistSurfacesButIsNotScored:
         # real statuses straight from seat_availability
         for t in best.candidate.tickets:
             assert store.get_availability(t.train_number, t.from_station, t.to_station)[t.coach] == t.status
-        # the score has no risk term: it is fully explained by the four weighted components
+        # the score is fully explained by the five weighted components
         f, s = best.fare_time_score, best.transfer_score
-        assert best.final_score == pytest.approx(
-            W_TIME * f.moving_time_minutes + W_FARE * f.total_fare
-            + W_TRANSFER * s.total_feasibility_penalty + W_LAYOVER * f.layover_minutes)
-        summary("6. RAC/WAITLIST surfaces but is not scored", rec,
-                f"statuses used: {statuses}  -- final_score contains NO risk term (known gap)")
+        assert best.candidate.risky_leg_count == 2
+        four_terms = (W_TIME * f.moving_time_minutes + W_FARE * f.total_fare
+                      + W_TRANSFER * s.total_feasibility_penalty + W_LAYOVER * f.layover_minutes)
+        assert best.final_score == pytest.approx(four_terms + W_RISK * 2)
+        summary("6. RAC/WAITLIST surfaces and is priced", rec,
+                f"statuses used: {statuses}  -- risk adds {W_RISK * 2:.0f} "
+                f"({four_terms:.1f} -> {best.final_score:.1f}), still ranked")
 
 
 # =========================================================================== #

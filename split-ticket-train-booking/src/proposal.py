@@ -48,9 +48,18 @@ class CandidateItinerary:
         return itinerary_signature(self.tickets)
 
     @property
+    def risky_leg_count(self) -> int:
+        """How many tickets are RAC/WAITLIST rather than CONFIRMED.
+
+        The coordinator prices this (``W_RISK`` per leg), so it is a count
+        rather than a flag: two risky legs are worse than one.
+        """
+        return sum(1 for t in self.tickets if t.is_risky)
+
+    @property
     def is_risky(self) -> bool:
         """True if any ticket is RAC/WAITLIST rather than CONFIRMED."""
-        return any(t.is_risky for t in self.tickets)
+        return self.risky_leg_count > 0
 
     @property
     def trains(self) -> tuple[str, ...]:

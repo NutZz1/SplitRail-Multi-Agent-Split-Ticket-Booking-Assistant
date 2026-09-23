@@ -66,6 +66,7 @@ WEIGHTS = {
     "W_FARE": coord_mod.W_FARE,
     "W_TRANSFER": coord_mod.W_TRANSFER,
     "W_LAYOVER": coord_mod.W_LAYOVER,
+    "W_RISK": coord_mod.W_RISK,
 }
 
 

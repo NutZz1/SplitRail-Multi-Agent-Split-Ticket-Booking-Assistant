@@ -89,7 +89,7 @@ function TrainSection({ group, penaltiesAt }) {
   );
 }
 
-export default function JourneyCard({ option }) {
+export default function JourneyCard({ option, weights }) {
   const c = option.candidate;
   const f = option.fare_time_score;
   const t = option.transfer_score;
@@ -136,7 +136,12 @@ export default function JourneyCard({ option }) {
         <span>🕒 {hm(f.wall_clock_minutes)} door to door</span>
         <span>☕ {hm(f.layover_minutes)} waiting / dwell</span>
         <span>{t.total_feasibility_penalty > 0 ? `⚠ transfer penalty ${t.total_feasibility_penalty.toFixed(0)}` : "✓ no transfer penalty"}</span>
-        {c.is_risky && <span className="risky">◔ RAC / waitlist on a leg — not priced into score</span>}
+        {c.is_risky && (
+        <span className="risky">
+          ◔ {c.risky_leg_count} RAC / waitlist leg{c.risky_leg_count > 1 ? "s" : ""}
+          {weights?.W_RISK ? ` — adds ${(c.risky_leg_count * weights.W_RISK).toFixed(0)} to the score` : ""}
+        </span>
+      )}
       </div>
     </article>
   );

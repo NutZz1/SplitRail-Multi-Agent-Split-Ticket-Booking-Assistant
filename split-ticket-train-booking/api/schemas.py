@@ -144,6 +144,7 @@ class CandidateOut(BaseModel):
     split_stations: list[str]
     trains: list[str]
     is_risky: bool
+    risky_leg_count: int  # priced at W_RISK per leg by the coordinator
 
     @classmethod
     def from_domain(cls, c: CandidateItinerary, name_of: "NameLookup" = lambda n: "") -> "CandidateOut":
@@ -152,6 +153,7 @@ class CandidateOut(BaseModel):
             tickets=[TicketOut.from_domain(t, name_of(t.train_number)) for t in c.tickets],
             total_time_minutes=c.total_time_minutes, transfer_count=c.transfer_count,
             split_stations=list(c.split_stations), trains=list(c.trains), is_risky=c.is_risky,
+            risky_leg_count=c.risky_leg_count,
         )
 
 

@@ -70,8 +70,8 @@ export default function ResultsPage({ request, result, loading, error, health, d
             ))}
             <p className="legend muted">
               Ranked by score = {result.weights.W_TIME} × moving minutes + {result.weights.W_FARE} × fare (₹) + {result.weights.W_TRANSFER} × transfer
-              penalty + {result.weights.W_LAYOVER} × layover minutes (lower is better). Seat status (RAC / WAITLIST) is shown on each leg but
-              does not affect the score.
+              penalty + {result.weights.W_LAYOVER} × layover minutes + {result.weights.W_RISK} × RAC/waitlist legs (lower is better). A risky
+              seat is a soft penalty, never an exclusion.
             </p>
           </>
         )}

@@ -71,8 +71,10 @@ def test_search_puri_cdg_is_complete_and_matches_the_engine(client):
     assert best["fare_time_score"]["total_fare"] == pytest.approx(1060.28, abs=0.01)
     assert best["fare_time_score"]["layover_minutes"] == pytest.approx(533)
     assert best["transfer_score"]["per_transfer_penalties"][0]["buffer_minutes"] == 400
-    assert best["final_score"] == pytest.approx(5597.28, abs=0.01)
-    assert {"W_TIME", "W_FARE", "W_TRANSFER", "W_LAYOVER"} == set(res["weights"])
+    # 5597.28 four-term score + W_RISK (60) x 2 risky legs = 5717.28
+    assert best["candidate"]["risky_leg_count"] == 2
+    assert best["final_score"] == pytest.approx(5717.28, abs=0.01)
+    assert {"W_TIME", "W_FARE", "W_TRANSFER", "W_LAYOVER", "W_RISK"} == set(res["weights"])
     assert res["resolve_seconds"] > 0
     assert [e["agent_name"] for e in res["search_effort_summary"]] == ["SameTrainSearchAgent", "DifferentTrainSearchAgent"]
 
