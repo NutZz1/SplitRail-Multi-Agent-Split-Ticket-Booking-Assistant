@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SplitRail: Run web app",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/split-ticket-train-booking/web.py",
+      "cwd": "${workspaceFolder}/split-ticket-train-booking",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

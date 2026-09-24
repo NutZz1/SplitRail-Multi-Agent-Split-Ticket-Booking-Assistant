@@ -18,6 +18,23 @@ Open **http://localhost:8000**. On Windows, activate with `.venv\Scripts\Activat
 
 The first launch builds `railway.db` from the **committed six-train demo dataset**. No external data archive is needed. If the optional full `data_source/schedules_clean.json` exists, the builder uses it instead. The local server runs searches in-process and serves one request at a time; it is a demonstration server.
 
+### Running from VS Code
+
+1. Open the **repository root** (the folder containing this README) as the VS Code workspace, and install the Microsoft **Python** extension if you don't have it.
+2. Create the virtual environment and install dependencies once, from either a terminal or VS Code's integrated terminal (`` Ctrl+` `` / `` Cmd+` ``):
+   ```sh
+   cd split-ticket-train-booking
+   python3 -m venv .venv
+   .venv/bin/pip install -r requirements.txt
+   ```
+3. Select the interpreter: open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) → **Python: Select Interpreter** → choose `split-ticket-train-booking/.venv/bin/python`. The repo's `.vscode/settings.json` already points VS Code at this interpreter, so this step is usually automatic.
+4. Run the app either way:
+   - **Debug (recommended)**: open the **Run and Debug** panel (`Cmd+Shift+D` / `Ctrl+Shift+D`) and press **F5**, or pick **SplitRail: Run web app** from the configuration dropdown. This uses the included `.vscode/launch.json`, sets the working directory to `split-ticket-train-booking`, and lets you set breakpoints.
+   - **Terminal**: in VS Code's integrated terminal, run `cd split-ticket-train-booking && .venv/bin/python web.py`.
+5. Open **http://localhost:8000** in your browser. Stop the server with the Debug panel's stop button, or `Ctrl+C` in the terminal.
+
+The repo also ships `python.testing.pytestEnabled` in `.vscode/settings.json`, so the tests in `split-ticket-train-booking/tests` show up in VS Code's **Testing** panel once the interpreter above is selected.
+
 ### Loading the full network (optional)
 
 The demo subset covers six trains. To search the whole timetable, convert a raw
