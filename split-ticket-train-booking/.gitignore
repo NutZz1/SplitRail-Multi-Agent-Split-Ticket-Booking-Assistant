@@ -6,3 +6,6 @@ __pycache__/
 # Large data files: rebuild locally with `python data_source/build_sqlite_db.py`
 railway.db
 data_source/schedules_clean.json
+
+# Local secrets
+.env

@@ -63,10 +63,21 @@ Uses a fixed random seed (42) for reproducibility, so your demo results are cons
 
 ## Project setup (SplitRail code)
 
-`railway.db` (45 MB) and `data_source/schedules_clean.json` (65 MB) are not
-committed. To reproduce them after cloning:
+Use Python 3.11+ with the pinned dependencies. See the [root README](../README.md)
+for the browser interface (`python web.py`) and its first-launch setup.
 
-1. Copy `schedules_clean.json` from `train_data_package.zip` into `data_source/`.
+`railway.db` and the optional full `data_source/schedules_clean.json` are not
+committed. The database builder falls back to the schedules in the committed
+`demo_subset.json`, so the six-train demo works directly after cloning.
+
+1. Optionally provide `schedules_clean.json` in `data_source/` for the full
+   network. From a raw flat stop-record dump, generate it with:
+
+       python data_source/convert_schedules.py <raw schedules.json>
+
+   The converter groups stops by train (route order comes from the raw `id`),
+   turns the `"None"` time strings into nulls, and derives `halt_minutes`,
+   which is `null` at termini and `0` for a technical pass-through.
 2. Build the database:
 
        python data_source/build_sqlite_db.py
@@ -83,4 +94,70 @@ Source layout:
     src/data_store.py   RailDataStore - read-only access to railway.db
     src/rail_graph.py   build_graph   - min-travel-time station graph
     src/heuristic.py    RailHeuristic - admissible A* lower bound (cached Dijkstra)
-    tests/              pytest suite verified against the real data
+    tests/              pytest suite (some graph/count checks require full schedules)
+    web.py              local HTTP server and validated search adapter
+    src/live_trains.py  erail.in client for currently-running services
+    src/railradar.py    RailRadar client: trains between two stations
+    web/                responsive browser interface
+    data_source/convert_schedules.py  raw stop dump -> schedules_clean.json
+
+`RailDataStore.get_direct_trains(origin, destination)` lists the trains that
+run a pair without a change. It respects direction (a train is only returned
+when it departs the origin before reaching the destination) and excludes
+technical pass-throughs at both ends, since a train that does not halt cannot
+be boarded. Termini are kept: they have no halt duration but are boardable.
+It reads the timetable only, so it covers every train in the database rather
+than the six with simulated availability.
+
+
+## Live timetable lookups
+
+`src/live_trains.py` fetches the services currently running between two
+stations from `erail.in/rail/getTrains.aspx`, which answers with a
+`~`-delimited text blob rather than JSON. Parsing is separated from the
+network call (`parse_between_stations` vs `fetch_between_stations`) so it is
+tested against a saved response in `tests/fixtures/`.
+
+`running_days` is a seven-character mask. **Index 0 is Monday**: train 12008
+returns `1110111` and is documented as running daily except Thursday, which is
+index 3. The [AniCrad/indian-rail-api](https://github.com/AniCrad/indian-rail-api)
+project, which covers the same endpoint, maps index 0 to Wednesday; that would
+place this train's off-day on Saturday instead.
+
+Two deliberate differences from that project:
+
+- It rotates `User-Agent` strings per request to avoid being blocked. This
+  client sends one honest identifying `User-Agent` instead.
+- Its date filter builds `new Date(YYYY, MM, DD)` with a 1-based month, which
+  is off by one month. This client uses `date.weekday()` directly.
+
+Every caller must handle `LiveLookupError` by falling back to the local
+database; `web.py` does, and reports which source answered.
+
+
+## RailRadar provider
+
+`src/railradar.py` wraps [RailRadar](https://railradar.in), a keyed JSON API
+over Indian Railways data. It is preferred over the erail.in scraper when
+`RAILRADAR_API_KEY` is set, because it is a documented contract with a support
+contact and current station codes. It is still **not** an official service:
+CRIS Pravah, the official platform, is restricted to partner organisations.
+
+    GET /v1/trains/between/{from}/{to}   trains on a pair
+
+`byCity` is left off, so results are the two stations requested rather than
+every station in their metropolitan areas.
+
+Responses use the envelope `{"success", "data", "meta"}`; a `success: false`
+body is raised as `LiveLookupError` rather than read as data, so the caller
+falls back. The key travels in an `Authorization: Bearer` header and never in
+a URL — a test asserts this, since query strings leak into logs and history.
+
+`runDays` arrives as day names rather than erail's bit mask, so both are
+normalised through `live_trains.day_mask()` to one Monday-first 7-character
+mask. An unrecognised value becomes `1111111`, showing a train rather than
+letting a date filter silently drop it.
+
+The free plan allows 1,000 requests a month. Every search spends one, so the
+tests never call it: they stub `_request` or `urlopen`, and the single live
+test is skipped unless `RAILRADAR_API_KEY` is set.
