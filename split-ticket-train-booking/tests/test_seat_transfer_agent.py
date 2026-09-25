@@ -1,9 +1,10 @@
-"""Tests for SeatTransferAgent on real proposals."""
+﻿"""Tests for SeatTransferAgent on real proposals."""
 
 from __future__ import annotations
 
 import asyncio
 import datetime as dt
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -20,7 +21,7 @@ from src.agents.seat_transfer_agent import (
 )
 from src.proposal import CandidateItinerary
 from src.state import Ticket
-from tests.proposal_fixtures import MAIL_QUERY, proposal_from_goal, ride_with_transfer_at
+from tests.proposal_fixtures import MAIL_QUERY, ride_with_transfer_at
 
 
 @pytest.fixture(scope="module")
@@ -152,5 +153,7 @@ def test_not_applicable_when_no_solution(agent, no_solution_proposal):
 
 def test_score_is_frozen(agent, mail_proposal):
     score = asyncio.run(agent.evaluate(mail_proposal.best))
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         score.applicable = False  # type: ignore[misc]
+
+

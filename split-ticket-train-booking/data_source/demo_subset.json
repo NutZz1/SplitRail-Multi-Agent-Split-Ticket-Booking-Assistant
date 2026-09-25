@@ -19364,26 +19364,6 @@
     "SAT",
     "SUN"
    ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-10",
-    "2026-09-11",
-    "2026-09-12",
-    "2026-09-13",
-    "2026-09-14",
-    "2026-09-15",
-    "2026-09-16",
-    "2026-09-17",
-    "2026-09-18",
-    "2026-09-19",
-    "2026-09-20",
-    "2026-09-21",
-    "2026-09-22",
-    "2026-09-23",
-    "2026-09-24",
-    "2026-09-25"
-   ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   },
   "12609": {
@@ -19396,24 +19376,6 @@
     "FRI",
     "SAT"
    ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-10",
-    "2026-09-11",
-    "2026-09-12",
-    "2026-09-14",
-    "2026-09-15",
-    "2026-09-16",
-    "2026-09-17",
-    "2026-09-18",
-    "2026-09-19",
-    "2026-09-21",
-    "2026-09-22",
-    "2026-09-23",
-    "2026-09-24",
-    "2026-09-25"
-   ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   },
   "16525": {
@@ -19423,19 +19385,6 @@
     "THU",
     "SAT",
     "SUN"
-   ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-10",
-    "2026-09-12",
-    "2026-09-13",
-    "2026-09-15",
-    "2026-09-17",
-    "2026-09-19",
-    "2026-09-20",
-    "2026-09-22",
-    "2026-09-24"
    ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   },
@@ -19450,26 +19399,6 @@
     "SAT",
     "SUN"
    ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-10",
-    "2026-09-11",
-    "2026-09-12",
-    "2026-09-13",
-    "2026-09-14",
-    "2026-09-15",
-    "2026-09-16",
-    "2026-09-17",
-    "2026-09-18",
-    "2026-09-19",
-    "2026-09-20",
-    "2026-09-21",
-    "2026-09-22",
-    "2026-09-23",
-    "2026-09-24",
-    "2026-09-25"
-   ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   },
   "15017": {
@@ -19479,17 +19408,6 @@
     "WED",
     "FRI"
    ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-11",
-    "2026-09-14",
-    "2026-09-16",
-    "2026-09-18",
-    "2026-09-21",
-    "2026-09-23",
-    "2026-09-25"
-   ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   },
   "12217": {
@@ -19497,15 +19415,6 @@
    "runs_on": [
     "TUE",
     "FRI"
-   ],
-   "validity_start": "2026-09-10",
-   "validity_end": "2026-09-25",
-   "running_dates": [
-    "2026-09-11",
-    "2026-09-15",
-    "2026-09-18",
-    "2026-09-22",
-    "2026-09-25"
    ],
    "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
   }

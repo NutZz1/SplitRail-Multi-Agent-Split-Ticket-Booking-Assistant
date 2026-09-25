@@ -51,9 +51,9 @@ SEARCH_MODES: dict[str, Callable] = {
 _WORKER: dict[str, object] = {}
 
 
-def _init_worker(db_path: str) -> None:
+def _init_worker(db_path: str, bookings_path: str | None = None) -> None:
     logging.getLogger("src.rail_graph").setLevel(logging.ERROR)  # 121 known bad-timing warnings
-    store = RailDataStore(db_path)
+    store = RailDataStore(db_path, bookings_path)
     _WORKER["store"] = store
     _WORKER["heuristic"] = RailHeuristic(build_graph(store, verbose=False))
 
@@ -67,10 +67,15 @@ def _run_search(query: UserQuery, mode: str, k: int) -> tuple[list[JourneyState]
 class SearchWorkerPool:
     """A small ProcessPoolExecutor whose workers hold a ready-to-use store + heuristic."""
 
-    def __init__(self, db_path: str | Path, max_workers: int = 2) -> None:
+    def __init__(self, db_path: str | Path, bookings_path: str | Path | None = None,
+                 max_workers: int = 2) -> None:
+        """``bookings_path`` is handed to each worker's store so a pooled search
+        sees the same reservations an in-process one does."""
         self.db_path = str(db_path)
+        self.bookings_path = str(bookings_path) if bookings_path is not None else None
         self._pool = ProcessPoolExecutor(
-            max_workers=max_workers, initializer=_init_worker, initargs=(self.db_path,)
+            max_workers=max_workers, initializer=_init_worker,
+            initargs=(self.db_path, self.bookings_path),
         )
         self.max_workers = max_workers
 

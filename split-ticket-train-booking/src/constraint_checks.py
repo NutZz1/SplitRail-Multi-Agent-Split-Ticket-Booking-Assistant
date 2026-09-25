@@ -16,36 +16,24 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import replace
 
-from src.data_store import RailDataStore, Stop
+from src.data_store import (  # noqa: F401  (coach_class/COACH_CLASS_PREFIXES re-exported)
+    COACH_CLASS_PREFIXES,
+    RailDataStore,
+    Stop,
+    coach_class,
+)
 from src.state import JourneyState, Ticket, UserQuery
 
 #: Lower is better when picking a coach.
 STATUS_PRIORITY = {"CONFIRMED": 0, "RAC": 1, "WAITLIST": 2}
 
-#: Coach-code prefix -> travel class. Longer prefixes are matched first.
-COACH_CLASS_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("BE", "3A"),  # 3-tier AC economy
-    ("S", "SL"),
-    ("B", "3A"),
-    ("A", "2A"),
-    ("H", "1A"),
-    ("D", "CC"),   # chair-car rakes (e.g. 12609) use D-series coaches
-    ("C", "CC"),
-    ("E", "EC"),
-)
-
 
 # --------------------------------------------------------------------------- #
 # Coach / class / time utilities
 # --------------------------------------------------------------------------- #
-def coach_class(coach_code: str | None) -> str | None:
-    """Map a coach code like ``S3``/``B1``/``H1`` to its class, or None if unreserved/service."""
-    if not coach_code:
-        return None
-    for prefix, cls in COACH_CLASS_PREFIXES:
-        if coach_code.startswith(prefix) and coach_code[len(prefix):].isdigit():
-            return cls
-    return None
+# ``coach_class`` and ``COACH_CLASS_PREFIXES`` moved to :mod:`src.data_store`
+# (the coach-code convention belongs to the source data) and are re-exported
+# above, so `from src.constraint_checks import coach_class` still works.
 
 
 def stop_datetime(stop: Stop, travel_date: dt.date, *, use_arrival: bool) -> dt.datetime | None:
@@ -158,14 +146,21 @@ def closing_candidates(stops: list[Stop], start_idx: int, destination: str) -> l
 
 
 def bookable_coaches(
-    store: RailDataStore, train_number: str, origin: str, candidates: list[str]
+    store: RailDataStore, train_number: str, origin: str, candidates: list[str],
+    run_date: str | None = None,
 ) -> dict[str, str]:
     """``{coach: best status}`` over every bookable pair (origin -> X), X in ``candidates``.
 
     A coach appears iff at least one closing point ahead is bookable in it;
     the status reported is the best it achieves at any of those points.
+
+    ``run_date`` makes the answer date-specific: berths already reserved on
+    that date are deducted, so a coach booked out on one day disappears from
+    the search for that day only. This is the single point through which
+    every successor generator -- and therefore BFS, UCS and A* alike -- sees
+    bookings.
     """
-    by_destination = store.get_availability_from(train_number, origin)
+    by_destination = store.get_availability_from(train_number, origin, run_date)
     best: dict[str, str] = {}
     for x in candidates:
         for coach, status in by_destination.get(x, {}).items():
@@ -196,7 +191,9 @@ def close_ticket(state: JourneyState, query: UserQuery, store: RailDataStore, st
         if origin_idx is not None else None
     )
     status = (
-        store.get_availability(train_number, origin, state.current_station).get(state.current_coach)
+        store.get_availability(
+            train_number, origin, state.current_station, query.travel_date.isoformat()
+        ).get(state.current_coach)
         if state.current_coach is not None else None
     )
     return Ticket(

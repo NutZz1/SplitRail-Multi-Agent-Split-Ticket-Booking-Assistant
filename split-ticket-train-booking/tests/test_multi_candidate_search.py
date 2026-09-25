@@ -1,4 +1,4 @@
-"""
+﻿"""
 k-candidate search on real data.
 
 The point of this step: because g(n) is moving time only, a same-train
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -21,7 +22,7 @@ from src.agents.same_train_search_agent import K_CANDIDATES, SameTrainSearchAgen
 from src.proposal import CandidateItinerary, ItineraryProposal, itinerary_signature
 from src.search_astar import astar_search, astar_search_k
 from src.state import UserQuery
-from src.successors_different_train import get_successors_different_train
+from tests.markers import requires_full_network
 
 WED, TUE = dt.date(2026, 9, 16), dt.date(2026, 9, 15)
 
@@ -126,6 +127,7 @@ def test_first_goal_per_signature_is_kept(store, heuristic, mail_query):
 # --------------------------------------------------------------------------- #
 # k = 1 is the old search, exactly
 # --------------------------------------------------------------------------- #
+@requires_full_network
 def test_k1_matches_astar_search(store, heuristic, mail_query):
     goal, stats = astar_search(mail_query, store, heuristic)
     goals, stats_k = astar_search_k(mail_query, store, heuristic, k=1)
@@ -166,7 +168,7 @@ def test_candidate_fields_and_attribution(store, heuristic, mail_query):
         assert c.transfer_count == c.goal_state.transfer_count == len(c.tickets) - 1
         assert c.tickets[0].from_station == "SBC" and c.tickets[-1].to_station == "MAS"
     assert p.found is True and p.failure_reason is None
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         p.candidates = ()  # type: ignore[misc]
 
 
@@ -176,3 +178,5 @@ def test_different_train_agent_also_returns_split_candidates_when_they_exist(sto
     # proposes the BNC split -- the two agents' candidate sets are complementary.
     p = asyncio.run(DifferentTrainSearchAgent(store, heuristic).propose(mail_query))
     assert [c.transfer_count for c in p.candidates] == [0]
+
+

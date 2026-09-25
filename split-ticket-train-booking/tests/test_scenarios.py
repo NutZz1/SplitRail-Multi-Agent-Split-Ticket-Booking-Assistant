@@ -1,4 +1,4 @@
-"""
+﻿"""
 Formal scenario suite -- the system's behaviour on the situations the design
 identified as important, on REAL data, end to end through CoordinatorAgent.
 
@@ -24,7 +24,8 @@ import pytest
 from src.agents.coordinator_agent import (
     W_FARE,
     W_LAYOVER,
-    W_RISK,
+    W_RAC,
+    W_WAITLIST,
     W_TIME,
     W_TRANSFER,
     CoordinatorAgent,
@@ -34,6 +35,7 @@ from src.agents.fare_time_agent import FareTimeAgent
 from src.agents.same_train_search_agent import SameTrainSearchAgent
 from src.agents.seat_transfer_agent import SeatTransferAgent
 from src.state import UserQuery
+from tests.markers import requires_full_network
 
 WED = dt.date(2026, 9, 16)   # 12658 runs, 12217 does not
 TUE = dt.date(2026, 9, 15)   # 12801 and 12217 both run
@@ -88,13 +90,17 @@ class TestScenario1_HappyPath_DirectBeatsSplitOnMerit:
         assert split.candidate.risky_leg_count == 1       # SBC->BNC in S1 is RAC
         gap = split.final_score - direct.final_score
         expected_gap = (W_TRANSFER * split.transfer_score.total_feasibility_penalty
-                        + W_RISK * split.candidate.risky_leg_count
+                        + W_RAC * split.candidate.rac_leg_count
+                        + W_WAITLIST * split.candidate.waitlist_leg_count
                         + W_FARE * (split.fare_time_score.total_fare - direct.fare_time_score.total_fare))
         assert gap == pytest.approx(expected_gap, abs=1e-6)
+        # The split is also DEARER, not cheaper: a second ticket pays the
+        # reservation and superfast charges again, and loses the telescopic taper.
+        assert split.fare_time_score.total_fare > direct.fare_time_score.total_fare
         summary("1. direct beats split on merit", rec,
                 f"direct {direct.final_score:.1f} vs split {split.final_score:.1f}; gap {gap:.1f} = "
                 f"{W_TRANSFER}x penalty {split.transfer_score.total_feasibility_penalty:.0f} "
-                f"+ {W_RISK}x{split.candidate.risky_leg_count} risky leg "
+                f"+ {W_RAC}x{split.candidate.rac_leg_count} RAC leg "
                 f"+ fare diff {split.fare_time_score.total_fare - direct.fare_time_score.total_fare:+.2f}")
 
 
@@ -205,10 +211,10 @@ class TestScenario6_RacWaitlistSurfacesAndIsPriced:
         By design RAC/WAITLIST are soft risk, not hard exclusion, so the candidate
         appears in ranked_options with the statuses on its tickets.
 
-        Seat status is now PRICED as well as surfaced: the coordinator adds
-        W_RISK per risky leg, so this itinerary carries 2 x W_RISK. Risk remains a
-        soft penalty -- the candidate is still ranked, never excluded. (Earlier
-        revisions tracked status but ignored it in the score; that gap is closed.)"""
+        Seat status is PRICED as well as surfaced, and priced BY KIND: this
+        itinerary carries one RAC leg (W_RAC) and one WAITLIST leg
+        (W_WAITLIST), not two interchangeable "risky" legs. Risk remains a
+        soft penalty -- the candidate is still ranked, never excluded."""
         rec = resolve(coordinator, UserQuery("PURI", "CDG", TUE, max_transfers=2))
         assert rec.found
         best = rec.best
@@ -221,11 +227,14 @@ class TestScenario6_RacWaitlistSurfacesAndIsPriced:
         # the score is fully explained by the five weighted components
         f, s = best.fare_time_score, best.transfer_score
         assert best.candidate.risky_leg_count == 2
+        assert (best.candidate.rac_leg_count, best.candidate.waitlist_leg_count) == (1, 1)
         four_terms = (W_TIME * f.moving_time_minutes + W_FARE * f.total_fare
                       + W_TRANSFER * s.total_feasibility_penalty + W_LAYOVER * f.layover_minutes)
-        assert best.final_score == pytest.approx(four_terms + W_RISK * 2)
-        summary("6. RAC/WAITLIST surfaces and is priced", rec,
-                f"statuses used: {statuses}  -- risk adds {W_RISK * 2:.0f} "
+        risk = W_RAC + W_WAITLIST
+        assert best.final_score == pytest.approx(four_terms + risk)
+        summary("6. RAC/WAITLIST surfaces and is priced by kind", rec,
+                f"statuses used: {statuses}  -- risk adds {risk:.0f} "
+                f"(RAC {W_RAC:.0f} + WAITLIST {W_WAITLIST:.0f}); "
                 f"({four_terms:.1f} -> {best.final_score:.1f}), still ranked")
 
 
@@ -252,28 +261,38 @@ class TestScenario7_TransferLimitRespected:
 
 
 # =========================================================================== #
-class TestScenario8_PassengerCount_CurrentBehaviour:
-    def test_passenger_count_is_carried_but_not_enforced(self, coordinator):
-        """CURRENT BEHAVIOUR, documented honestly: passenger_count is accepted by
-        UserQuery, copied onto every JourneyState, and otherwise unused -- it does
-        not affect availability checks, candidates, or scores. Seat-adjacency /
-        group modelling was scoped out of this project (single-passenger-equivalent
-        seat check only), so a group query returns exactly the single-passenger
-        result. This test asserts that equivalence; it deliberately does not make
-        passenger_count start doing anything."""
+class TestScenario8_PassengerCount:
+    def test_a_party_is_priced_per_passenger(self, coordinator):
+        """passenger_count now PRICES the journey: four passengers pay four fares.
+
+        What it still does not do is check that four berths are actually free
+        together, or that they are adjacent. Seat-adjacency and group
+        allocation remain out of scope, so the same itineraries come back for
+        a party of four as for one -- only the money changes. That limit is
+        asserted below rather than left implicit.
+        """
         one = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2, passenger_count=1))
         four = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2, passenger_count=4))
         assert one.found and four.found
+
+        # Same journeys ...
         assert [o.candidate.signature for o in one.ranked_options] == [o.candidate.signature for o in four.ranked_options]
-        assert [o.final_score for o in one.ranked_options] == [o.final_score for o in four.ranked_options]
-        assert [o.fare_time_score.total_fare for o in one.ranked_options] == [o.fare_time_score.total_fare for o in four.ranked_options]
-        assert all(o.candidate.goal_state.passenger_count == 4 for o in four.ranked_options)  # carried through
-        summary("8. passenger_count is carried but not enforced", four,
-                "identical options, scores and fares for 1 and 4 passengers (per-passenger fare/adjacency out of scope)")
+        assert all(o.candidate.goal_state.passenger_count == 4 for o in four.ranked_options)
+        # ... at four times the fare.
+        for single, party in zip(one.ranked_options, four.ranked_options):
+            assert party.fare_time_score.passengers == 4
+            assert party.fare_time_score.total_fare == pytest.approx(
+                single.fare_time_score.total_fare * 4, abs=0.05)
+            # The score moves with the fare, so a group's cost is weighed honestly.
+            assert party.final_score > single.final_score
+        summary("8. passenger_count is priced per passenger", four,
+                "same itineraries as a single traveller, fares and scores multiplied by four "
+                "(seat adjacency and group allocation remain out of scope)")
 
 
 # =========================================================================== #
 class TestScenario9_DemoSubsetCoverageIsExplicit:
+    @requires_full_network
     def test_uncovered_route_fails_with_a_coverage_message(self, coordinator, store):
         """JAT -> UHP on 2026-09-16: served in the real timetable (e.g. 04601) but by
         no train with availability / run-date data. The result must be found=False
@@ -287,3 +306,4 @@ class TestScenario9_DemoSubsetCoverageIsExplicit:
         assert "12658" in rec.failure_reason                          # the covered set is listed
         assert "runs on" not in rec.failure_reason                    # not mis-described as a wrong-day case
         summary("9. demo-subset coverage is explicit", rec)
+

@@ -140,7 +140,9 @@ def different_train_transfer_successors(
             continue
 
         candidates = closing_candidates(stops, idx + 1, destination)
-        availability = bookable_coaches(store, other, here_code, candidates)
+        availability = bookable_coaches(
+            store, other, here_code, candidates, query.travel_date.isoformat()
+        )
         if not availability:
             continue
         composition = store.get_coach_composition(other)

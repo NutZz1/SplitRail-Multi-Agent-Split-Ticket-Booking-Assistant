@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import datetime as dt
 
-import pytest
 
 from src.constraint_checks import coach_class, stop_datetime
 from src.rail_graph import segment_minutes

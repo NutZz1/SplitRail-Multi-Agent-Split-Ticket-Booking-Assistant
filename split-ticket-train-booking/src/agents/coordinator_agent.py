@@ -49,10 +49,12 @@ a certainty of it. It is also deliberately small against a long journey
 decide between otherwise comparable options, not overturn a much faster
 or much cheaper one.
 
-The penalty is per leg and flat, so it does not currently distinguish RAC
-(boardable, shared side-berth) from WAITLIST (may not board at all), even
-though RAC is materially better. Splitting the two is the obvious future
-refinement.
+RAC and WAITLIST are priced separately (``W_RAC`` = 40, ``W_WAITLIST`` =
+110), because they are not the same risk: RAC guarantees boarding on a
+shared side-berth, while WAITLIST may mean not travelling at all. Both stay
+soft penalties -- a waitlisted journey still beats no journey -- but a
+waitlisted leg now loses to any confirmed alternative that is not much
+slower or dearer.
 
 Missing fare
 ------------
@@ -97,7 +99,24 @@ W_FARE: float = 1.0
 W_TRANSFER: float = 2.0
 #: Rs per minute of layover / dwell (half the moving-minute rate).
 W_LAYOVER: float = 1.0
-#: Rs-equivalent penalty per RAC / WAITLIST leg (see "Seat risk" in the docstring).
+#: Rs-equivalent penalty per RAC leg: a berth is shared until someone
+#: cancels, but boarding is guaranteed. At the Rs 2/minute value of time this
+#: says a confirmed berth is worth about twenty minutes of journey per leg --
+#: between a daytime platform change (Rs 40) and the night coach switch at
+#: BNC (Rs 104), which is the honest reading of "you will travel, but not
+#: comfortably".
+W_RAC: float = 40.0
+
+#: Rs-equivalent penalty per WAITLIST leg. Materially worse than RAC: the
+#: passenger may not board at all, and an itinerary that strands them halfway
+#: is not merely uncomfortable. Priced near three times RAC so a waitlisted
+#: leg loses to any confirmed alternative that is not dramatically slower or
+#: dearer, while still being a soft penalty rather than a hard exclusion --
+#: a waitlisted journey is better than no journey.
+W_WAITLIST: float = 110.0
+
+#: Back-compatible average, used only by callers that still price a single
+#: undifferentiated "risky leg" count.
 W_RISK: float = 60.0
 
 #: Cap applied to the SAME-TRAIN sub-query's max_transfers (see docstring).
@@ -248,15 +267,26 @@ def final_score(
     fare_time: FareTimeScore,
     fare_for_scoring: float,
     risky_legs: int = 0,
+    rac_legs: int | None = None,
+    waitlist_legs: int | None = None,
 ) -> float:
-    """Weighted sum in rupee-equivalents; lower is better. ``risky_legs`` is the
-    number of RAC/WAITLIST tickets on the candidate (see "Seat risk" above)."""
+    """Weighted sum in rupee-equivalents; lower is better.
+
+    Seat risk is priced per leg and by KIND: ``rac_legs`` at :data:`W_RAC` and
+    ``waitlist_legs`` at :data:`W_WAITLIST`. When neither is given the older
+    undifferentiated ``risky_legs`` count is priced at :data:`W_RISK`, so
+    callers that have not been updated keep working.
+    """
+    if rac_legs is None and waitlist_legs is None:
+        risk = W_RISK * risky_legs
+    else:
+        risk = W_RAC * (rac_legs or 0) + W_WAITLIST * (waitlist_legs or 0)
     return (
         W_TIME * fare_time.moving_time_minutes
         + W_FARE * fare_for_scoring
         + W_TRANSFER * transfer.total_feasibility_penalty
         + W_LAYOVER * fare_time.layover_minutes
-        + W_RISK * risky_legs
+        + risk
     )
 
 
@@ -273,7 +303,8 @@ def rank_candidates(
     for c, t, f in zip(candidates, transfer_scores, fare_scores):
         missing = f.total_fare is None
         fare_for_scoring = imputed_fare if missing else f.total_fare  # type: ignore[assignment]
-        score = final_score(t, f, fare_for_scoring, risky_legs=c.risky_leg_count)
+        score = final_score(t, f, fare_for_scoring,
+                            rac_legs=c.rac_leg_count, waitlist_legs=c.waitlist_leg_count)
         ranked.append(RankedItinerary(c, t, f, score, fare_imputed=missing))
 
     def sort_key(r: RankedItinerary) -> tuple:

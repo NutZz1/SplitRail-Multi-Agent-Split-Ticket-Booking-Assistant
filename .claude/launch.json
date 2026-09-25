@@ -1,17 +1,18 @@
 {
+  "_comment": [
+    "Paths are relative to the repository root so this file works on any clone.",
+    "It previously hard-coded one contributor's absolute .venv path, which",
+    "meant it launched nothing for anybody else. Create the venv as the README",
+    "describes (python -m venv .venv inside split-ticket-train-booking) and",
+    "this runs as-is on Windows; on macOS/Linux change Scripts to bin."
+  ],
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "api",
-      "runtimeExecutable": "C:/Users/sreep/OneDrive/Desktop/FOAI-Project/split-ticket-train-booking/.venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "uvicorn", "api.main:app", "--port", "8000", "--app-dir", "split-ticket-train-booking"],
+      "name": "web",
+      "runtimeExecutable": "split-ticket-train-booking/.venv/Scripts/python.exe",
+      "runtimeArgs": ["split-ticket-train-booking/web.py"],
       "port": 8000
-    },
-    {
-      "name": "client-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "split-ticket-train-booking/client", "run", "dev"],
-      "port": 5173
     }
   ]
 }

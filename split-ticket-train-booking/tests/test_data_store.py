@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for src.data_store.RailDataStore against the REAL railway.db.
 
 These are integration tests by design: the whole point of the data layer is
@@ -17,12 +17,13 @@ import pytest
 
 from src.data_store import (
     AVAILABILITY_STATUSES,
-    DEFAULT_DB_PATH,
     RailDataStore,
     Station,
     Stop,
     Train,
+    default_db_path,
 )
+from tests.markers import requires_full_network
 
 MAIL = "12658"  # Bangalore - Chennai Mail, daily, SBC -> MAS
 KERALA_SK = "12217"  # Kerala Sampark Kranti, Tue/Fri only
@@ -40,7 +41,7 @@ def db():
 # lifecycle / safety
 # --------------------------------------------------------------------------- #
 def test_default_db_path_exists():
-    assert DEFAULT_DB_PATH.is_file()
+    assert default_db_path().is_file()
 
 
 def test_missing_db_raises(tmp_path):
@@ -226,8 +227,11 @@ def test_runs_on_date_12217_tue_fri(db):
 
 def test_runs_on_date_12658_daily(db):
     assert db.runs_on_date(MAIL, "2026-09-16") is True
-    for day in range(10, 26):
+    # The window is the 10 days from the pinned start (see tests/conftest.py),
+    # so 09-10 .. 09-19 inclusive, and a daily train runs on every one of them.
+    for day in range(10, 20):
         assert db.runs_on_date(MAIL, f"2026-09-{day:02d}") is True
+    assert db.runs_on_date(MAIL, "2026-09-20") is False  # day 11: past the window
 
 
 def test_runs_on_date_outside_window_or_unknown(db):
@@ -240,6 +244,7 @@ def test_runs_on_date_outside_window_or_unknown(db):
 # --------------------------------------------------------------------------- #
 # trains through station
 # --------------------------------------------------------------------------- #
+@requires_full_network
 def test_get_all_trains_through_station(db):
     trains = db.get_all_trains_through_station("JTJ")  # Jolarpettai Jn, busy junction
     assert MAIL in trains
@@ -277,13 +282,13 @@ def _sha256(path) -> str:
 
 
 def test_store_usage_does_not_modify_db():
-    before = _sha256(DEFAULT_DB_PATH)
+    before = _sha256(default_db_path())
     with RailDataStore() as store:
         store.get_stops(MAIL)
         store.get_real_halt_stops(MAIL)
         store.get_availability(MAIL, "SBC", "MAS")
         store.get_all_trains_through_station("MAS")
-    assert _sha256(DEFAULT_DB_PATH) == before
+    assert _sha256(default_db_path()) == before
 
 
 def test_get_availability_from_matches_per_pair_queries(db):
@@ -309,7 +314,8 @@ def test_demo_coverage_accessors(db):
     assert db.get_run_pattern("12217") == ["TUE", "FRI"]
     assert db.get_run_pattern("12658") == ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     assert db.get_run_pattern(NON_DEMO) == []
-    assert db.get_run_date_range() == ("2026-09-10", "2026-09-25")
+    assert db.get_run_date_range() == ("2026-09-10", "2026-09-19")
+    assert db.get_window() == ("2026-09-10", "2026-09-19")
 
 
 def test_search_stations(db):
@@ -322,3 +328,4 @@ def test_search_stations(db):
     assert db.search_stations("   ") == []
     assert db.search_stations("zzzzzzzz") == []
     assert db.search_stations("'; DROP TABLE stations; --") == []
+

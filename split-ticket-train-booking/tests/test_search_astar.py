@@ -9,6 +9,7 @@ import math
 from src.search_astar import astar_search
 from src.state import UserQuery
 from tests.search_checks import assert_no_solution, assert_valid_mail_itinerary
+from tests.markers import requires_full_network
 
 DATE = dt.date(2026, 9, 16)
 
@@ -33,6 +34,7 @@ def test_astar_no_solution_impossible_class(store, heuristic):
     assert_no_solution(goal, stats, min_expanded=1)
 
 
+@requires_full_network
 def test_astar_no_solution_unreachable_destination_fails_fast(store, heuristic):
     # MYS is in the graph and h(x, MYS) is finite, but the same-train
     # generator refuses to board 12658 (it never reaches MYS): 1 expansion.

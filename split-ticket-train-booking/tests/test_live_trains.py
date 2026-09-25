@@ -61,11 +61,21 @@ def test_nearby_stations_are_reported_as_matched(trains):
     assert {t.from_code for t in trains} > {"SBC"}
 
 
-def test_error_responses_raise(  ):
-    for body in ["~~~~~No direct trains found", "~~~~~From station not found",
-                 "~~~~~To station not found", "~~~~~Please try again after some time."]:
+def test_error_responses_raise():
+    for body in ["~~~~~From station not found", "~~~~~To station not found",
+                 "~~~~~Please try again after some time."]:
         with pytest.raises(LiveLookupError):
             parse_between_stations(body)
+
+
+def test_no_direct_trains_is_an_answer_not_an_error():
+    """erail saying "no direct trains" means the pair has no through service.
+
+    It must NOT raise: raising makes web.py treat the provider as broken and
+    fall back to the 2020 snapshot, which would then list trains that no
+    longer run. RailRadar returns an empty list here for the same reason.
+    """
+    assert parse_between_stations("~~~~~No direct trains found") == []
 
 
 def test_empty_response_raises():

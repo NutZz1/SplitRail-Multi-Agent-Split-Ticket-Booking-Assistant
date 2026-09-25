@@ -290,3 +290,25 @@ dialog>p:not(.eyebrow) { font-size: 13px; line-height: 1.9; color: #637652; }
 .delay { font-size: 11px; font-weight: 600; }
 .delay.on-time { color: #2f6a44; }
 .delay.late { color: #b4671f; }
+
+/* --- reservations ------------------------------------------------------- */
+/* Reuses the .direct-* row layout so the ledger reads as part of the same
+   page rather than a bolted-on panel. */
+.card-actions { display: flex; align-items: center; gap: 16px; }
+.reserve-button { background: var(--green); color: #fff; border: 0; border-radius: 5px; padding: 7px 13px; font-size: 12px; font-weight: 650; display: flex; align-items: center; gap: 7px; font-family: inherit; cursor: pointer; }
+.reserve-button:hover:not(:disabled) { background: #0d3227; }
+.reserve-button:disabled { background: #93a89c; cursor: default; }
+.reserve-button span { font-size: 11px; }
+.bookings-panel { border-color: #bcd9c3; background: #f7fbf7; }
+.booking-row:last-child { border-bottom: 0; }
+.booking-row .direct-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cancel-button { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; font-size: 11px; color: #8a4b3f; font-family: inherit; cursor: pointer; }
+.cancel-button:hover:not(:disabled) { border-color: #d8b3ac; background: #fdf6f4; }
+.cancel-button:disabled { color: var(--muted); cursor: default; }
+@media (max-width: 720px) {
+  .card-actions { gap: 10px; }
+  .reserve-button { padding: 6px 10px; font-size: 11px; }
+}
+.berth-chip { font-style: normal; color: #2f6a44; background: #f1f8f2; border: 1px solid #bcd9c3; border-radius: 20px; padding: 2px 9px; font-size: 11px; margin-left: 8px; white-space: nowrap; }
+.berths { color: var(--muted); font-size: 12px; margin: 3px 0 0; }
+@media (max-width: 720px) { .berth-chip { display: none; } }

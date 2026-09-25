@@ -1,13 +1,14 @@
-"""Tests for FareTimeAgent on real proposals."""
+﻿"""Tests for FareTimeAgent on real proposals."""
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import FrozenInstanceError
 
 import pytest
 
 from src.agents.fare_time_agent import FareTimeAgent, FareTimeScore
-from src.fare_model import FARE_PER_KM, compute_total_fare
+from src.fare_model import compute_fare, compute_total_fare
 from src.distance import route_distance_km
 
 
@@ -26,9 +27,10 @@ def test_sbc_mas_direct_numbers(agent, store, mail_proposal):
     assert score.wall_clock_minutes >= score.moving_time_minutes
     assert score.layover_minutes == 15                           # dwell at the 6 intermediate halts
     # fare: class of the single ticket x real route distance
-    cls = mail_proposal.best.tickets[0].travel_class
+    ticket = mail_proposal.best.tickets[0]
     km = route_distance_km("12658", "SBC", "MAS", store)
-    assert score.total_fare == pytest.approx(km * FARE_PER_KM[cls], abs=0.01)
+    assert km > 0
+    assert score.total_fare == pytest.approx(compute_fare(ticket, store), abs=0.01)
     assert 100 < score.total_fare < 2000
     assert score.per_ticket_fares == (score.total_fare,)
 
@@ -88,10 +90,12 @@ def test_not_applicable_when_no_solution(agent, no_solution_proposal):
 
 def test_score_is_frozen(agent, mail_proposal):
     score = asyncio.run(agent.evaluate(mail_proposal.best))
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         score.total_fare = 0.0  # type: ignore[misc]
 
 
 def test_total_fare_matches_fare_model(agent, store, bnc_split_proposal):
     score = asyncio.run(agent.evaluate(bnc_split_proposal.best))
     assert score.total_fare == compute_total_fare(bnc_split_proposal.best.tickets, store)
+
+

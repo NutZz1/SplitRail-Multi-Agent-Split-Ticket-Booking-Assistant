@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for SameTrainSearchAgent on real 12658 data.
 
 Coroutines are driven with ``asyncio.run`` so no pytest-asyncio plugin is
@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import time
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -17,6 +18,7 @@ from src.agents.same_train_search_agent import SameTrainSearchAgent, diagnose_fa
 from src.proposal import ItineraryProposal
 from src.search_astar import astar_search
 from src.state import UserQuery
+from tests.markers import requires_full_network
 
 DATE = dt.date(2026, 9, 16)
 
@@ -52,6 +54,7 @@ def test_propose_finds_sbc_to_mas(agent, mail_query):
     print("\n" + p.describe())
 
 
+@requires_full_network
 def test_search_stats_carried_through_unchanged(agent, store, heuristic, mail_query):
     p = asyncio.run(agent.propose(mail_query))
     _, direct = astar_search(mail_query, store, heuristic)
@@ -211,10 +214,12 @@ def test_pool_rejects_unknown_mode(pool, mail_query):
 # --------------------------------------------------------------------------- #
 def test_proposal_is_frozen(agent, mail_query):
     p = asyncio.run(agent.propose(mail_query))
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         p.found = False  # type: ignore[misc]
 
 
 def test_proposal_risk_flag(agent, mail_query):
     p = asyncio.run(agent.propose(mail_query))
     assert p.best.is_risky == any(t.status in {"RAC", "WAITLIST"} for t in p.best.tickets)
+
+

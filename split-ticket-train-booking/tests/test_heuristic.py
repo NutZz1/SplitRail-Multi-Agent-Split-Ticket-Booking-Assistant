@@ -16,6 +16,7 @@ import pytest
 
 from src.data_store import Stop
 from src.heuristic import RailHeuristic
+from tests.markers import requires_full_network
 
 MAIL = "12658"
 GOAL = "MAS"
@@ -95,6 +96,7 @@ def test_heuristic_spot_checks(heuristic, mail_real_costs, code):
     assert 0 < est <= real
 
 
+@requires_full_network
 def test_heuristic_is_admissible_for_many_trains(heuristic, store):
     """Broader check: every real train's own route cost must dominate the heuristic."""
     checked = 0

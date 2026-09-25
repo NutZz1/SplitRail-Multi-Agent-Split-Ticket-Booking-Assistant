@@ -20,7 +20,7 @@ pop time here keeps ``nodes_expanded`` directly comparable across the three.)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.state import JourneyState
 

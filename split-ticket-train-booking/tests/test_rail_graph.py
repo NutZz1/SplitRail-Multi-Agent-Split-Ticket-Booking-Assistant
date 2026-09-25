@@ -8,10 +8,10 @@ built graph's structure using train 12658's known real-halt route.
 from __future__ import annotations
 
 import networkx as nx
-import pytest
 
 from src.data_store import Stop
 from src.rail_graph import GraphBuildStats, build_graph, segment_minutes, time_to_minutes
+from tests.markers import requires_full_network
 
 MAIL = "12658"
 MAIL_HALTS = ["SBC", "BNC", "BWT", "JTJ", "KPD", "AJJ", "PER", "MAS"]
@@ -85,6 +85,7 @@ def test_graph_is_directed(graph):
     assert isinstance(graph, nx.DiGraph)
 
 
+@requires_full_network
 def test_graph_size_is_sane(graph):
     n, e = graph.number_of_nodes(), graph.number_of_edges()
     print(f"\nGraph size: {n:,} nodes, {e:,} edges")
@@ -93,6 +94,7 @@ def test_graph_size_is_sane(graph):
     assert n < 8990  # not every station is a real halt for some train
 
 
+@requires_full_network
 def test_build_stats_attached(graph):
     stats = graph.graph["build_stats"]
     assert isinstance(stats, GraphBuildStats)
