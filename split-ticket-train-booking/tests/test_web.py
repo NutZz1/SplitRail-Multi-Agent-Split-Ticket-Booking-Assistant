@@ -6,6 +6,7 @@ import pytest
 from cli import build_system
 import web
 from web import direct_trains, search
+from tests.markers import requires_full_network
 
 
 @pytest.fixture(scope="module")
@@ -54,6 +55,7 @@ def offline(monkeypatch):
 
 
 # --- direct-train endpoint -------------------------------------------------
+@requires_full_network
 def test_direct_trains_returns_real_runs(web_system, offline):
     """The whole network is covered, not just the six demo trains."""
     result = direct_trains(web_system, {"origin": "HWH", "destination": "NDLS"})

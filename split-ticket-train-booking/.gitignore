@@ -4,8 +4,16 @@ __pycache__/
 .pytest_cache/
 
 # Large data files: rebuild locally with `python data_source/build_sqlite_db.py`
+# railway.db is also rebuilt automatically whenever the booking window rolls.
 railway.db
 data_source/schedules_clean.json
+
+# Reservations. Deliberately a separate file from railway.db so a window
+# rebuild never destroys them; local state, never committed.
+bookings.db
+
+# Window-pinned database built by tests/conftest.py
+tests/.pytest-db/
 
 # Local secrets
 .env

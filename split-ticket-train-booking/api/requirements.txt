@@ -1,6 +1,0 @@
-# Web API layer -- extends the engine requirements (install from the project root:
-#   pip install -r api/requirements.txt)
--r ../requirements.txt
-fastapi==0.141.1
-uvicorn[standard]==0.53.0
-httpx2==2.13.0   # only for starlette TestClient (tests/test_api.py)

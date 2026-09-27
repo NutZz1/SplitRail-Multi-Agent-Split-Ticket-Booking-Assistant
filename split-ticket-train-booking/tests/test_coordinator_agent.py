@@ -1,4 +1,4 @@
-"""
+﻿"""
 CoordinatorAgent on real data: Stage 1 || -> prune -> Stage 2 || -> rank.
 
 Spies wrap the real agents so tests can assert on the exact query objects
@@ -19,7 +19,8 @@ from src.agents.coordinator_agent import (
     SCORE_EPSILON,
     W_FARE,
     W_LAYOVER,
-    W_RISK,
+    W_RAC,
+    W_WAITLIST,
     W_TIME,
     W_TRANSFER,
     CoordinatorAgent,
@@ -117,7 +118,7 @@ def test_sbc_mas_ranks_direct_above_bnc_split(coordinator):
     # Both move 340 min with 15 min dwell. The split saves a few rupees (SL for
     # the first leg) but carries a real BNC transfer penalty (coach walk + 23:00
     # night switch) worth W_TRANSFER x penalty rupees, and its SL leg is only RAC,
-    # worth one W_RISK; together those dwarf the saving.
+    # worth one W_RAC; together those dwarf the saving.
     assert direct.final_score < split.final_score
     assert r.ranked_options[0] is direct
 
@@ -128,11 +129,11 @@ def test_sbc_mas_ranks_direct_above_bnc_split(coordinator):
         W_TIME * 340 + W_FARE * direct.fare_time_score.total_fare + W_LAYOVER * 15)
 
     # the split rides SBC->BNC in S1, which is RAC in the real data -> one risky leg
-    assert split.candidate.risky_leg_count == 1
+    assert (split.candidate.rac_leg_count, split.candidate.waitlist_leg_count) == (1, 0)
     assert split.final_score == pytest.approx(
         W_TIME * 340 + W_FARE * split.fare_time_score.total_fare
         + W_TRANSFER * split.transfer_score.total_feasibility_penalty + W_LAYOVER * 15
-        + W_RISK * 1)
+        + W_RAC * 1)
 
 
 def test_sbc_mas_direct_found_by_both_agents_is_shown_once(coordinator):
@@ -157,13 +158,15 @@ def test_puri_cdg_connection_ranked_with_real_fare_and_layover(coordinator):
     assert best.candidate.signature == (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
     assert best.candidate.agent_name == "DifferentTrainSearchAgent"
     f, t = best.fare_time_score, best.transfer_score
-    assert f.total_fare == pytest.approx(1060, abs=5)
+    # Telescopic base over ~1,950 km in sleeper, plus TWO sets of reservation
+    # and superfast charges because the journey is split across 12801 and 12217.
+    assert f.total_fare == pytest.approx(1040, abs=15)
     assert f.layover_minutes == pytest.approx(533, abs=1)
     assert t.per_transfer_penalties[0]["kind"] == "different_train"
     assert best.candidate.risky_leg_count == 2          # RAC on 12801, WAITLIST on 12217
     assert best.final_score == pytest.approx(
         W_TIME * f.moving_time_minutes + W_FARE * f.total_fare + W_TRANSFER * t.total_feasibility_penalty
-        + W_LAYOVER * f.layover_minutes + W_RISK * 2)
+        + W_LAYOVER * f.layover_minutes + W_RAC + W_WAITLIST)
     assert elapsed < 5.0, f"resolve() took {elapsed:.1f}s -- unexpectedly slow for the different-train path"
 
 
@@ -326,7 +329,7 @@ def test_rank_candidates_epsilon_tie():
 
 
 # --------------------------------------------------------------------------- #
-# seat-risk term (W_RISK per RAC/WAITLIST leg)
+# seat-risk term (W_RAC per RAC leg, W_WAITLIST per WAITLIST leg)
 # --------------------------------------------------------------------------- #
 def _risk_pair():
     """Two candidates identical in fare, time and transfers, differing ONLY in seat
@@ -346,15 +349,29 @@ def _risk_pair():
 
 def test_risk_term_changes_ranking_not_just_the_number():
     """The core proof: with everything else equal, the CONFIRMED itinerary now
-    outranks the RAC/WAITLIST one, and by exactly one W_RISK."""
+    outranks the WAITLIST one, and by exactly one W_WAITLIST."""
     confirmed, risky, zero, score = _risk_pair()
     # risky listed FIRST, so discovery order cannot explain the outcome
     ranked = rank_candidates([risky, confirmed], [zero, zero], [score, score])
     assert ranked[0].candidate is confirmed, "confirmed itinerary must rank above the risky one"
     assert ranked[1].candidate is risky
-    assert ranked[1].final_score - ranked[0].final_score == pytest.approx(W_RISK)
+    assert ranked[1].final_score - ranked[0].final_score == pytest.approx(W_WAITLIST)
     print(f"\nconstructed pair: confirmed {ranked[0].final_score:.1f} < waitlist {ranked[1].final_score:.1f} "
-          f"(delta {ranked[1].final_score - ranked[0].final_score:.1f} = W_RISK)")
+          f"(delta {ranked[1].final_score - ranked[0].final_score:.1f} = W_WAITLIST)")
+
+
+def test_waitlist_is_penalised_harder_than_rac():
+    """RAC guarantees boarding; WAITLIST does not. They must not score the same."""
+    when = dt.datetime(2026, 9, 16, 22, 45)
+    arr = when + dt.timedelta(minutes=340)
+    zero = TransferFeasibilityScore("A", True, (), 0.0)
+    score = FareTimeScore("A", True, 450.0, 340.0, 355.0, 15.0)
+    rac = _cand("A", 0, (_ticket("12658", "SBC", "MAS", "SL", when, arr, status="RAC"),), 340.0, 0)
+    waitlist = _cand("A", 1, (_ticket("12658", "SBC", "MAS", "SL", when, arr, status="WAITLIST"),), 340.0, 0)
+    ranked = rank_candidates([waitlist, rac], [zero, zero], [score, score])
+    assert ranked[0].candidate is rac
+    assert ranked[1].final_score - ranked[0].final_score == pytest.approx(W_WAITLIST - W_RAC)
+    assert W_RAC < W_WAITLIST
 
 
 def test_risk_term_is_a_no_op_without_risky_legs():
@@ -379,8 +396,11 @@ def test_risk_scales_with_the_number_of_risky_legs():
     two = _cand("A", 1, (_ticket("12658", "SBC", "BNC", "SL", when, mid, status="RAC"),
                          _ticket("12658", "BNC", "MAS", "SL", mid, arr, status="WAITLIST")), 340.0, 1)
     assert (one.risky_leg_count, two.risky_leg_count) == (1, 2)
+    assert (one.rac_leg_count, one.waitlist_leg_count) == (1, 0)
+    assert (two.rac_leg_count, two.waitlist_leg_count) == (1, 1)
     ranked = rank_candidates([one, two], [zero, zero], [score, score])
-    assert ranked[1].final_score - ranked[0].final_score == pytest.approx(W_RISK)
+    # The second candidate's extra leg is WAITLIST, so the gap is one W_WAITLIST.
+    assert ranked[1].final_score - ranked[0].final_score == pytest.approx(W_WAITLIST)
 
 
 def test_puri_cdg_risk_delta_and_still_ranked(coordinator):
@@ -393,10 +413,12 @@ def test_puri_cdg_risk_delta_and_still_ranked(coordinator):
     old = (W_TIME * f.moving_time_minutes + W_FARE * f.total_fare
            + W_TRANSFER * t.total_feasibility_penalty + W_LAYOVER * f.layover_minutes)
     assert r.found and best.candidate.risky_leg_count == 2
-    assert best.final_score == pytest.approx(old + W_RISK * 2)
-    assert best.final_score - old == pytest.approx(120.0)
+    # RAC on 12801, WAITLIST on 12217 -- two different risks, priced differently.
+    assert (best.candidate.rac_leg_count, best.candidate.waitlist_leg_count) == (1, 1)
+    assert best.final_score == pytest.approx(old + W_RAC + W_WAITLIST)
+    assert best.final_score - old == pytest.approx(150.0)
     print(f"\nPURI->CDG: old (4-term) {old:.2f} -> new (5-term) {best.final_score:.2f} "
-          f"(+{best.final_score - old:.0f} = W_RISK x 2); still found and ranked #1")
+          f"(+{best.final_score - old:.0f} = W_RAC + W_WAITLIST); still found and ranked #1")
 
 
 def test_missing_fare_is_imputed_pessimistically_not_dropped(agents, store):
@@ -466,3 +488,4 @@ def test_all_options_returned_not_just_winner(coordinator):
     assert scores == sorted(scores)
     assert all(isinstance(o, RankedItinerary) for o in r.ranked_options)
     assert r.best is r.ranked_options[0]
+

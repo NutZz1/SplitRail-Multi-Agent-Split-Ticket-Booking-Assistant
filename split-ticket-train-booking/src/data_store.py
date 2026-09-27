@@ -25,16 +25,61 @@ Table reference (see README.md / data_source/build_sqlite_db.py):
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
+from src.booking_store import (
+    DEFAULT_CAPACITY,
+    BookingStore,
+    default_bookings_path,
+    effective_status,
+    seats_taken,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = PROJECT_ROOT / "railway.db"
 
+#: Environment override for the database location, honoured by every caller
+#: that does not pass an explicit path (the test suite uses it to point at a
+#: window-pinned fixture database).
+DB_PATH_ENV = "SPLIT_TICKET_DB"
+
+
+def default_db_path() -> Path:
+    """Where ``RailDataStore()`` looks when given no path."""
+    return Path(os.environ.get(DB_PATH_ENV) or DEFAULT_DB_PATH)
+
+
 #: Valid values for ``seat_availability.status``.
 AVAILABILITY_STATUSES = frozenset({"CONFIRMED", "RAC", "WAITLIST", "UNAVAILABLE"})
+
+#: Coach-code prefix -> travel class. Longer prefixes are matched first.
+#: This lives in the data layer because it describes the coach-code
+#: convention of the source data itself; :mod:`src.constraint_checks`
+#: re-exports it so existing imports keep working.
+COACH_CLASS_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("BE", "3A"),  # 3-tier AC economy
+    ("S", "SL"),
+    ("B", "3A"),
+    ("A", "2A"),
+    ("H", "1A"),
+    ("D", "CC"),   # chair-car rakes (e.g. 12609) use D-series coaches
+    ("C", "CC"),
+    ("E", "EC"),
+)
+
+
+def coach_class(coach_code: str | None) -> str | None:
+    """Map a coach code like ``S3``/``B1``/``H1`` to its class, or None if unreserved/service."""
+    if not coach_code:
+        return None
+    for prefix, cls in COACH_CLASS_PREFIXES:
+        if coach_code.startswith(prefix) and coach_code[len(prefix):].isdigit():
+            return cls
+    return None
 
 #: Column name -> human-readable class label, in the order stored on ``trains``.
 CLASS_COLUMNS = {
@@ -167,15 +212,28 @@ class RailDataStore:
     All queries are parameterized; no SQL is ever built from string formatting.
     """
 
-    def __init__(self, db_path: Union[str, Path, None] = None) -> None:
+    def __init__(
+        self,
+        db_path: Union[str, Path, None] = None,
+        bookings_path: Union[str, Path, None] = None,
+    ) -> None:
         """Open a read-only connection to ``db_path`` (default: project railway.db).
+
+        ``bookings_path`` points at the read-write bookings database (default:
+        ``bookings.db`` beside railway.db). It is opened lazily, read-only,
+        and only when a date-aware availability query actually needs it, so a
+        deployment with no bookings pays nothing and behaves exactly as before.
 
         Raises:
             FileNotFoundError: if the database file does not exist.
         """
-        self.db_path: Path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH
+        self.db_path: Path = Path(db_path) if db_path is not None else default_db_path()
         if not self.db_path.is_file():
             raise FileNotFoundError(f"railway.db not found at {self.db_path}")
+        self.bookings_path: Path = (
+            Path(bookings_path) if bookings_path is not None else default_bookings_path()
+        )
+        self._bookings_conn: BookingStore | None = None
 
         # mode=ro makes SQLite itself refuse writes on this connection.
         # immutable=1 tells SQLite the file cannot change while open, so it
@@ -183,8 +241,12 @@ class RailDataStore:
         # queries and no lock contention between concurrent readers. Safe
         # because nothing writes railway.db while the application runs
         # (rebuilds via data_source/build_sqlite_db.py happen offline).
+        # check_same_thread=False so a threaded server can serve requests from
+        # its worker threads. It does NOT make the connection thread-safe: the
+        # caller must serialise access (web.py holds ENGINE_LOCK, and the search
+        # agents use clone() to get a connection of their own per thread).
         uri = self.db_path.resolve().as_uri() + "?mode=ro&immutable=1"
-        self._conn: sqlite3.Connection = sqlite3.connect(uri, uri=True)
+        self._conn: sqlite3.Connection = sqlite3.connect(uri, uri=True, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
 
     # -- lifecycle ----------------------------------------------------------
@@ -194,12 +256,16 @@ class RailDataStore:
         ``sqlite3`` connections are bound to the thread that created them, so
         code that runs queries in a worker thread (e.g. an agent running A*
         via ``asyncio.to_thread``) must use its own connection. Cloning is
-        cheap: it only opens a file handle, no data is copied.
+        cheap: it only opens a file handle, no data is copied. The bookings
+        path is carried over so a cloned store still sees reservations.
         """
-        return RailDataStore(self.db_path)
+        return RailDataStore(self.db_path, self.bookings_path)
 
     def close(self) -> None:
         """Close the underlying connection. Safe to call more than once."""
+        if self._bookings_conn is not None:
+            self._bookings_conn.close()
+            self._bookings_conn = None
         if self._conn is not None:
             self._conn.close()
             self._conn = None  # type: ignore[assignment]
@@ -478,7 +544,17 @@ class RailDataStore:
         return abs(row["pos_a"] - row["pos_b"])
 
     # -- availability -------------------------------------------------------
-    def get_availability(self, train_number: str, from_station: str, to_station: str) -> dict[str, str]:
+    #
+    # Availability comes in two layers. ``seat_availability`` in railway.db is
+    # the synthetic BASELINE: what a typical run of this train looks like, with
+    # no date attached. Reservations recorded in bookings.db are the per-DATE
+    # layer on top of it. Passing ``run_date`` merges the two; omitting it
+    # returns the baseline unchanged, which is what every existing caller and
+    # test expects.
+    def get_availability(
+        self, train_number: str, from_station: str, to_station: str,
+        run_date: Optional[str] = None,
+    ) -> dict[str, str]:
         """Return ``{coach_code: status}`` for the exact segment ``from_station -> to_station``.
 
         ``status`` is one of CONFIRMED / RAC / WAITLIST / UNAVAILABLE. Returns
@@ -486,6 +562,10 @@ class RailDataStore:
         triple — which is the case for non-demo trains, for pass-through
         stations, and for segments given in the wrong direction. Coaches are
         returned in physical rake order.
+
+        With ``run_date`` (``YYYY-MM-DD``), bookings held for that date are
+        applied, so a coach that has been reserved out reads UNAVAILABLE on
+        that date and keeps its baseline status on every other date.
         """
         rows = self._conn.execute(
             """
@@ -499,12 +579,36 @@ class RailDataStore:
             """,
             (train_number, from_station, to_station),
         ).fetchall()
-        return {r["coach_code"]: r["status"] for r in rows}
+        baseline = {r["coach_code"]: r["status"] for r in rows}
+        if run_date is None or not baseline:
+            return baseline
+        held = self._active_bookings(train_number, run_date)
+        if not held:
+            return baseline
+        orders = self._stop_orders(train_number)
+        span = (orders.get(from_station), orders.get(to_station))
+        if span[0] is None or span[1] is None:
+            return baseline
+        return {
+            coach: effective_status(
+                status,
+                self.coach_capacity(train_number, coach),
+                seats_taken(held, coach, span[0], span[1]),
+            )
+            for coach, status in baseline.items()
+        }
 
-    def get_availability_from(self, train_number: str, from_station: str) -> dict[str, dict[str, str]]:
+    def get_availability_from(
+        self, train_number: str, from_station: str, run_date: Optional[str] = None,
+    ) -> dict[str, dict[str, str]]:
         """Return ``{to_station: {coach_code: status}}`` for every bookable segment
         starting at ``from_station`` on ``train_number`` -- one query instead of
         one per destination. Empty dict if no data.
+
+        ``run_date`` applies that date's bookings, exactly as in
+        :meth:`get_availability`. This is the call the successor generators
+        make, so passing a date is what makes BFS, UCS and A* all see
+        reservations without any change to the algorithms themselves.
         """
         rows = self._conn.execute(
             """
@@ -517,7 +621,77 @@ class RailDataStore:
         out: dict[str, dict[str, str]] = {}
         for r in rows:
             out.setdefault(r["to_station"], {})[r["coach_code"]] = r["status"]
+        if run_date is None or not out:
+            return out
+
+        held = self._active_bookings(train_number, run_date)
+        if not held:
+            return out
+        orders = self._stop_orders(train_number)
+        start = orders.get(from_station)
+        if start is None:
+            return out
+
+        capacities: dict[str, int] = {}
+        for to_station, coaches in out.items():
+            end = orders.get(to_station)
+            if end is None or end <= start:
+                continue
+            for coach, status in list(coaches.items()):
+                if coach not in capacities:
+                    capacities[coach] = self.coach_capacity(train_number, coach)
+                coaches[coach] = effective_status(
+                    status, capacities[coach], seats_taken(held, coach, start, end)
+                )
         return out
+
+    # -- bookings (read side) ----------------------------------------------
+    def _bookings(self) -> Optional[BookingStore]:
+        """The read-only bookings connection, opened on first use; None if absent.
+
+        Opened lazily because bookings.db is created by the first write, which
+        may happen long after this store was opened.
+        """
+        if self._bookings_conn is None:
+            if not self.bookings_path.is_file():
+                return None
+            self._bookings_conn = BookingStore(self.bookings_path, read_only=True)
+        return self._bookings_conn
+
+    def _active_bookings(self, train_number: str, run_date: str) -> list:
+        bookings = self._bookings()
+        if bookings is None:
+            return []
+        return bookings.active_for_run(train_number, run_date)
+
+    def _stop_orders(self, train_number: str) -> dict[str, int]:
+        """``{station_code: stop_order}`` over the train's real halts."""
+        return {s.station_code: s.stop_order for s in self.get_real_halt_stops(train_number)}
+
+    # -- capacity -----------------------------------------------------------
+    def get_berth_rule(self, class_code: str) -> Optional[sqlite3.Row]:
+        """One row of ``berth_layout_rules``, or None for an unknown class."""
+        return self._conn.execute(
+            "SELECT * FROM berth_layout_rules WHERE class_code = ?", (class_code,)
+        ).fetchone()
+
+    def coach_travel_class(self, coach_code: str) -> Optional[str]:
+        """Travel class of a coach code (``S3`` -> ``SL``), or None if unreserved/service."""
+        return coach_class(coach_code)
+
+    def coach_capacity(self, train_number: str, coach_code: str) -> int:
+        """How many berths/seats ``coach_code`` holds, from the real published layout.
+
+        ``train_number`` is accepted so a future per-rake override has somewhere
+        to go; today every coach of a class has the same documented capacity.
+        """
+        cls = coach_class(coach_code)
+        if cls is None:
+            return 0
+        rule = self.get_berth_rule(cls)
+        if rule is None or rule["berths_per_coach"] is None:
+            return DEFAULT_CAPACITY
+        return int(rule["berths_per_coach"])
 
     # -- demo-coverage discovery -------------------------------------------
     def get_demo_train_numbers(self) -> list[str]:
@@ -537,9 +711,44 @@ class RailDataStore:
         return sorted((r["day_of_week"] for r in rows), key=order.__getitem__)
 
     def get_run_date_range(self) -> tuple[str, str] | None:
-        """(earliest, latest) ``YYYY-MM-DD`` covered by ``train_run_dates``, or None if empty."""
+        """(earliest, latest) ``YYYY-MM-DD`` covered by ``train_run_dates``, or None if empty.
+
+        This is the **booking window**. It is derived at build time from the
+        rolling window in :mod:`src.demo_window`, so it moves forward every
+        time the database is rebuilt rather than being frozen in the data.
+        """
         row = self._conn.execute("SELECT MIN(run_date), MAX(run_date) FROM train_run_dates").fetchone()
         return (row[0], row[1]) if row and row[0] else None
+
+    # -- build metadata -----------------------------------------------------
+    def get_meta(self, key: str) -> Optional[str]:
+        """One ``db_meta`` value, or None (also None for a database built before
+        ``db_meta`` existed, so callers must tolerate a missing row)."""
+        try:
+            row = self._conn.execute("SELECT value FROM db_meta WHERE key = ?", (key,)).fetchone()
+        except sqlite3.OperationalError:
+            return None  # pre-db_meta database
+        return row["value"] if row else None
+
+    def get_window(self) -> tuple[str, str] | None:
+        """``(window_start, window_end)`` this database was built for, or None."""
+        start, end = self.get_meta("window_start"), self.get_meta("window_end")
+        return (start, end) if start and end else None
+
+    def window_is_stale(self, today: Optional[str] = None) -> bool:
+        """True when this database's window does not start today.
+
+        The caller rebuilds on a True, which is how the demo keeps working
+        indefinitely: every day the window slides one day forward. Imported
+        locally because :mod:`src.demo_window` is a policy module and the data
+        layer should not depend on it just to open a database.
+        """
+        from src.demo_window import window_start
+
+        recorded = self.get_meta("window_start")
+        if recorded is None:
+            return True  # built before db_meta existed; rebuild to get a window
+        return recorded != (today or window_start().isoformat())
 
     # -- run calendar -------------------------------------------------------
     def runs_on_date(self, train_number: str, date_str: str) -> bool:

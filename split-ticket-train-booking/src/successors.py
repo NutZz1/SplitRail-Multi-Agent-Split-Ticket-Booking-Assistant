@@ -51,7 +51,7 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 
-from src.data_store import RailDataStore, Stop
+from src.data_store import RailDataStore
 from src.rail_graph import segment_minutes
 from src.state import JourneyState, UserQuery
 
@@ -123,7 +123,9 @@ def board_successors(
             continue
 
         candidates = closing_candidates(stops, idx + 1, query.destination_station)
-        availability = bookable_coaches(store, train_number, here.station_code, candidates)
+        availability = bookable_coaches(
+            store, train_number, here.station_code, candidates, query.travel_date.isoformat()
+        )
         if not availability:
             logger.debug("board %s at %s: no bookable coach for any ticket from here, skipping",
                          train_number, here.station_code)
@@ -172,7 +174,9 @@ def continue_successors(state: JourneyState, query: UserQuery, store: RailDataSt
     if state.current_coach is not None:
         origin = _ticket_origin(state, query)
         candidates = closing_candidates(stops, idx + 1, query.destination_station)
-        if state.current_coach not in bookable_coaches(store, train_number, origin, candidates):
+        if state.current_coach not in bookable_coaches(
+            store, train_number, origin, candidates, query.travel_date.isoformat()
+        ):
             return []
 
     return [replace(
@@ -214,7 +218,9 @@ def same_train_transfer_successors(state: JourneyState, query: UserQuery, store:
         return []  # the segment ridden so far is not bookable as a ticket ending here
 
     candidates = closing_candidates(stops, idx + 1, query.destination_station)
-    onward = bookable_coaches(store, train_number, here.station_code, candidates)
+    onward = bookable_coaches(
+        store, train_number, here.station_code, candidates, query.travel_date.isoformat()
+    )
     composition = store.get_coach_composition(train_number)
     out: list[JourneyState] = []
     for coach, cls, _status in best_coach_per_class(

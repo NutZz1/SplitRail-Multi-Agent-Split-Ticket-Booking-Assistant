@@ -1,0 +1,48 @@
+[project]
+name = "splitrail"
+version = "1.0.0"
+description = "Multi-agent split-ticket journey assistant for Indian Railways (academic case study)"
+readme = "README.md"
+requires-python = ">=3.11"
+# The browser interface runs on the standard library alone; NetworkX is the
+# only runtime dependency, used for the A* heuristic's Dijkstra pass.
+dependencies = ["networkx==3.6.1"]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "ruff==0.15.3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Fail on an unregistered mark rather than silently skipping nothing.
+addopts = "--strict-markers"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [".venv", "data_source/*.json"]
+
+[tool.ruff.lint]
+# Deliberately narrow: rules that catch real defects, not a style crusade that
+# would rewrite forty working files. `I` (import order) and `UP` (pyupgrade)
+# are omitted for exactly that reason -- they flagged 95 cosmetic changes
+# across the codebase and zero bugs.
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E501",  # line length: long explanatory comments are a feature here
+    "B008",  # FastAPI's Query()/Depends() in defaults is the documented idiom
+    # Several zips are intentionally ragged -- zip(tickets, tickets[1:]) pairs
+    # each leg with the next and must stop early. strict=True would crash them.
+    "B905",
+    "B904",  # `raise ... from` is used where the chain matters; not blanket-required
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Both entry points insert the project root on sys.path before importing src,
+# so their imports cannot come first.
+"cli.py" = ["E402"]
+"web.py" = ["E402"]
+"data_source/build_sqlite_db.py" = ["E402"]
+# conftest pins environment variables before importing anything that reads them.
+"tests/conftest.py" = ["E402"]
+"tests/*" = ["E402"]

@@ -48,11 +48,33 @@ class CandidateItinerary:
         return itinerary_signature(self.tickets)
 
     @property
+    def passenger_count(self) -> int:
+        """Size of the party this itinerary is for; 1 when no goal state carries it.
+
+        Read through a property rather than off ``goal_state`` directly because
+        candidates are also built by hand (tests, stubs) without one, and a
+        missing party size must degrade to "one passenger", not crash pricing.
+        """
+        state = self.goal_state
+        return max(1, getattr(state, "passenger_count", 1) or 1)
+
+    @property
+    def rac_leg_count(self) -> int:
+        """Legs held RAC: a berth is shared, but boarding is guaranteed."""
+        return sum(1 for t in self.tickets if t.status == "RAC")
+
+    @property
+    def waitlist_leg_count(self) -> int:
+        """Legs held WAITLIST: the passenger may not be able to board at all."""
+        return sum(1 for t in self.tickets if t.status == "WAITLIST")
+
+    @property
     def risky_leg_count(self) -> int:
         """How many tickets are RAC/WAITLIST rather than CONFIRMED.
 
-        The coordinator prices this (``W_RISK`` per leg), so it is a count
-        rather than a flag: two risky legs are worse than one.
+        Kept as a total for callers that only need "how many legs are not
+        confirmed"; the coordinator prices RAC and WAITLIST separately, since
+        a shared side-berth and not travelling at all are not the same risk.
         """
         return sum(1 for t in self.tickets if t.is_risky)
 

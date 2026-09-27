@@ -9,6 +9,9 @@ const duration = minutes => `${Math.floor(minutes/60)}h ${Math.round(minutes%60)
 const timeOf = value => value.slice(11,16);
 const dateOf = value => new Date(value.slice(0,10)+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const sameTrainChange = option => option.tickets.some((t,i,all) => i > 0 && t.train_number === all[i-1].train_number && t.coach !== all[i-1].coach);
+/** Berths left in this coach ON THIS DATE. Reserving moves it; other dates don't. */
+const berths = ticket => ticket.seats_remaining == null ? 'Berth count unavailable for this coach'
+  : `${ticket.seats_remaining} of ${ticket.seats_total} berths free in ${escapeHTML(ticket.coach)} on this date`;
 function updateStationNames(){for(const field of ['origin','destination']) $(field+'-name').textContent = nameOf($(field).value.trim().toUpperCase());}
 for(const field of ['origin','destination']) $(field).addEventListener('input',updateStationNames);
 $('swap').addEventListener('click',()=>{[$('origin').value,$('destination').value]=[$('destination').value,$('origin').value];updateStationNames();});
@@ -30,7 +33,7 @@ function bindAdjust(){const button=$('adjust-search');if(button)button.addEventL
 function details(option){return option.tickets.map((t,i)=>{
   let transfer='';
   if(i>0){const penalty=option.comfort.per_transfer_penalties[i-1];if(penalty){const coach=penalty.coach_distance == null?'':` · ${penalty.coach_distance} coach positions apart`;transfer=`<div class="transfer-note">${penalty.kind==='same_train'?'Change coach':'Change trains'} at <strong>${escapeHTML(nameOf(penalty.station))}</strong>${coach}${penalty.is_night?' · Night transfer':''}<br>Transfer comfort penalty: ${escapeHTML(penalty.penalty)}${penalty.note?' · '+escapeHTML(penalty.note):''}</div>`;}}
-  return `${transfer}<div class="leg"><strong>${escapeHTML(t.train_number)} · ${escapeHTML(t.train_name)}</strong><p>${escapeHTML(nameOf(t.from_station))} ${timeOf(t.boarding_datetime)} (${dateOf(t.boarding_datetime)}) → ${escapeHTML(nameOf(t.to_station))} ${timeOf(t.alighting_datetime)} (${dateOf(t.alighting_datetime)})</p><p>Coach ${escapeHTML(t.coach || 'unknown')} · ${escapeHTML(t.travel_class || 'Unknown class')} · ${escapeHTML(t.status || 'Availability unknown')} · ${money(option.fare.per_ticket_fares[i])} estimated</p></div>`;
+  return `${transfer}<div class="leg"><strong>${escapeHTML(t.train_number)} · ${escapeHTML(t.train_name)}</strong><p>${escapeHTML(nameOf(t.from_station))} ${timeOf(t.boarding_datetime)} (${dateOf(t.boarding_datetime)}) → ${escapeHTML(nameOf(t.to_station))} ${timeOf(t.alighting_datetime)} (${dateOf(t.alighting_datetime)})</p><p>Coach ${escapeHTML(t.coach || 'unknown')} · ${escapeHTML(t.travel_class || 'Unknown class')} · ${escapeHTML(t.status || 'Availability unknown')} · ${money(option.fare.per_ticket_fares[i])} estimated</p><p class="berths">${berths(t)}</p></div>`;
 }).join('')+`<p class="score-note">Moving time ${duration(option.fare.moving_time_minutes)} · Dwell & connections ${duration(option.fare.layover_minutes)} · Transfer penalty ${option.comfort.total_feasibility_penalty}<br>Overall ranking score ${option.score.toFixed(1)} (lower is better). Availability is simulated; fares are estimates.${option.fare_imputed?' Missing fare was estimated conservatively for ranking.':''}</p>`;}
 function card(option){
   const first=option.tickets[0],last=option.tickets.at(-1), dayOffset=Math.round((Date.parse(last.alighting_datetime.slice(0,10))-Date.parse(first.boarding_datetime.slice(0,10)))/86400000);
@@ -39,7 +42,8 @@ function card(option){
   const confirmed=option.tickets.every(t=>t.status==='CONFIRMED');
   const isRecommended=option.id===0;
   const comfort=option.transfers===0?'Settle in. No seat changes.':sameTrainChange(option)?'Same train, a different seat.':`${option.transfers} train connection${option.transfers===1?'':'s'} to your destination.`;
-  return `<article class="journey-card ${isRecommended?'recommended':''}">${isRecommended?'<div class="card-ribbon"><span>✧ RECOMMENDED JOURNEY</span><span>Best overall balance</span></div>':''}<div class="card-head"><span class="train-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="15" rx="4"/><path d="M5 11h14M12 3v8M8 18l-2 3m10-3 2 3M9 21h6"/><path d="M8 15h1m6 0h1"/></svg></span><div><h3 class="train-name">${escapeHTML(trains.length===1?first.train_name:'A connected journey')}</h3><p class="train-number">${escapeHTML(trains.join(' → '))} <span>·</span> ${escapeHTML(classes)}</p></div><span class="availability ${confirmed?'':'risk'}">${confirmed?'✓ Confirmed · demo':option.risky?'RAC / waitlist · demo':'Availability unknown'}</span></div><div class="card-journey"><div><div class="station-time">${timeOf(first.boarding_datetime)}</div><p class="station-label">${escapeHTML(first.from_station)}</p><p class="date-label">${dateOf(first.boarding_datetime)}</p></div><div class="route-line">${duration(option.fare.wall_clock_minutes)}<div class="route-track">${option.transfers?'<span>◇</span>':''}</div><span class="route-kind">${option.transfers?`${option.transfers} transfer${option.transfers>1?'s':''}`:'Direct journey'}</span></div><div><div class="station-time">${timeOf(last.alighting_datetime)}${dayOffset?`<span class="day-offset">+${dayOffset}d</span>`:''}</div><p class="station-label">${escapeHTML(last.to_station)}</p><p class="date-label">${dateOf(last.alighting_datetime)}</p></div><div class="price"><strong>${money(option.fare.total_fare)}</strong><span>estimated / adult</span></div></div><div class="card-bottom"><span>◇ ${comfort}</span><button class="details-toggle" aria-expanded="false" aria-controls="details-${option.id}">Journey details <span>↓</span></button></div><div class="journey-details" id="details-${option.id}" hidden>${details(option)}</div></article>`;
+  const legs = encodeURIComponent(JSON.stringify(option.tickets.map(t=>({train_number:t.train_number,from_station:t.from_station,to_station:t.to_station,coach:t.coach}))));
+  return `<article class="journey-card ${isRecommended?'recommended':''}">${isRecommended?'<div class="card-ribbon"><span>✧ RECOMMENDED JOURNEY</span><span>Best overall balance</span></div>':''}<div class="card-head"><span class="train-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="15" rx="4"/><path d="M5 11h14M12 3v8M8 18l-2 3m10-3 2 3M9 21h6"/><path d="M8 15h1m6 0h1"/></svg></span><div><h3 class="train-name">${escapeHTML(trains.length===1?first.train_name:'A connected journey')}</h3><p class="train-number">${escapeHTML(trains.join(' → '))} <span>·</span> ${escapeHTML(classes)}</p></div><span class="availability ${confirmed?'':'risk'}">${confirmed?'✓ Confirmed · demo':option.risky?'RAC / waitlist · demo':'Availability unknown'}</span></div><div class="card-journey"><div><div class="station-time">${timeOf(first.boarding_datetime)}</div><p class="station-label">${escapeHTML(first.from_station)}</p><p class="date-label">${dateOf(first.boarding_datetime)}</p></div><div class="route-line">${duration(option.fare.wall_clock_minutes)}<div class="route-track">${option.transfers?'<span>◇</span>':''}</div><span class="route-kind">${option.transfers?`${option.transfers} transfer${option.transfers>1?'s':''}`:'Direct journey'}</span></div><div><div class="station-time">${timeOf(last.alighting_datetime)}${dayOffset?`<span class="day-offset">+${dayOffset}d</span>`:''}</div><p class="station-label">${escapeHTML(last.to_station)}</p><p class="date-label">${dateOf(last.alighting_datetime)}</p></div><div class="price"><strong>${money(option.fare.total_fare)}</strong><span>estimated / adult</span></div></div><div class="card-bottom"><span>◇ ${comfort}<i class="berth-chip">${berths(first)}</i></span><span class="card-actions"><button class="reserve-button" data-legs="${legs}">Reserve a berth <span>✓</span></button><button class="details-toggle" aria-expanded="false" aria-controls="details-${option.id}">Journey details <span>↓</span></button></span></div><div class="journey-details" id="details-${option.id}" hidden>${details(option)}</div></article>`;
 }
 function renderOptions(){
   let visible=options.filter(o=>(o.transfers===0?$('filter-direct').checked:$('filter-split').checked)&&(!$('confirmed-only').checked||o.tickets.every(t=>t.status==='CONFIRMED'))&&(!$('no-coach-change').checked||!sameTrainChange(o)));
@@ -53,7 +57,59 @@ function renderOptions(){
   $('results').innerHTML=visible.length?visible.map(card).join(''):options.length?empty('A little too specific?','No journeys match these filters. Reset them to see all the options.'):empty('No journey found this time.','Try a sample route, another date, or a different class. Coverage is limited to six demo trains.');
   if(!visible.length&&options.length){$('adjust-search').textContent='Reset filters';$('adjust-search').addEventListener('click',()=>resetFilters());}else bindAdjust();
   for(const button of document.querySelectorAll('.details-toggle'))button.addEventListener('click',()=>{const expanded=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!expanded));$(button.getAttribute('aria-controls')).hidden=expanded;button.innerHTML=`${expanded?'Journey details':'Hide details'} <span>${expanded?'↓':'↑'}</span>`;});
+  for(const button of document.querySelectorAll('.reserve-button'))button.addEventListener('click',()=>reserve(button));
 }
+// --- reservations -----------------------------------------------------------
+// A reservation is held against ONE travel date. Booking a coach out changes
+// that date's options and leaves every other date alone, which is the whole
+// point of keying the ledger by run date -- so after every write we re-run the
+// current search and let the cards show the difference.
+async function loadBookings(){
+  try{
+    const response = await fetch('/api/bookings');
+    if(!response.ok) throw new Error();
+    const {bookings} = await response.json();
+    $('bookings-count').textContent = bookings.length ? `${bookings.length} held` : '';
+    $('bookings-list').innerHTML = bookings.length ? bookings.map(b=>
+      `<article class="direct-row booking-row"><div class="direct-train"><strong>${escapeHTML(b.train_number)}</strong><span>${escapeHTML(nameOf(b.from_station))} → ${escapeHTML(nameOf(b.to_station))}</span></div><div class="direct-times"><span>Coach ${escapeHTML(b.coach_code)}</span><i>·</i><span>${escapeHTML(b.travel_class||'—')}</span></div><div class="direct-meta"><span>${escapeHTML(dateOf(b.run_date+'T12:00:00'))} · ${b.passenger_count} berth${b.passenger_count===1?'':'s'}</span><button class="cancel-button" data-cancel="${escapeHTML(b.id)}">Cancel</button></div></article>`
+    ).join('') : '<p class="direct-empty">Nothing held yet. Reserve a berth on any journey below to see this date’s availability change.</p>';
+    $('bookings-panel').hidden = !bookings.length;
+    for(const button of document.querySelectorAll('[data-cancel]'))
+      button.addEventListener('click',()=>cancelBooking(button.dataset.cancel,button));
+  }catch{ $('bookings-panel').hidden = true; }
+}
+async function cancelBooking(id,button){
+  if(busy)return; button.disabled=true; button.textContent='Cancelling…';
+  try{
+    const response = await fetch(`/api/bookings/${encodeURIComponent(id)}`,{method:'DELETE'});
+    if(!response.ok)throw new Error((await response.json()).error||'Could not cancel.');
+    await loadBookings(); await rerun('Reservation cancelled. The berths are available again.');
+  }catch(error){ button.disabled=false; button.textContent='Cancel'; $('status').className='status error'; $('status').textContent=error.message; }
+}
+async function reserve(button){
+  if(busy||!lastQuery)return;
+  const legs = JSON.parse(decodeURIComponent(button.dataset.legs));
+  button.disabled=true; button.innerHTML='Reserving… ';
+  try{
+    const response = await fetch('/api/book-itinerary',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({run_date:lastQuery.date,legs})});
+    const result = await response.json();
+    if(!response.ok)throw new Error(result.error||'This berth could not be reserved.');
+    await loadBookings();
+    await rerun(`Reserved ${result.bookings.length} leg${result.bookings.length===1?'':'s'} on ${dateOf(lastQuery.date+'T12:00:00')}. Availability below reflects it.`);
+  }catch(error){ button.disabled=false; button.innerHTML='Reserve a berth <span>✓</span>'; $('status').className='status error'; $('status').textContent=error.message; }
+}
+/** Re-run the last search so the ranked options reflect the ledger change. */
+async function rerun(message){
+  if(!lastQuery)return;
+  try{
+    const response = await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastQuery)});
+    const result = await response.json();
+    if(response.ok){ options=result.options; renderOptions(); }
+  }catch{ /* leave the cards as they are; the ledger panel already updated */ }
+  $('status').className='status'; $('status').textContent=message;
+}
+
 const hhmm = value => String(value ?? '').slice(0,5);
 function renderDirect(result){
   const list=result.trains, live=result.source==='live';
@@ -93,5 +149,18 @@ $('search-form').addEventListener('submit',async event=>{
   }catch(error){options=[];lastQuery=null;$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';$('results-subtitle').textContent='We couldn’t complete this search.';}
   finally{initialSearch=false;busy=false;$('search-button').disabled=false;$('search-button').innerHTML='Find journeys <span>→</span>';$('results').setAttribute('aria-busy','false');}
 });
-async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();for(const s of meta.stations){if(!stationNames[s.code])stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());const opt=document.createElement('option');opt.value=s.code;opt.label=stationNames[s.code];$('stations').append(opt);}if(meta.dates){[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${meta.dates[0]} to ${meta.dates[1]}.`;if($('date').value<meta.dates[0]||$('date').value>meta.dates[1])$('date').value=meta.dates[0];}updateStationNames();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
+/** Move a sample route's date into the current booking window, keeping its weekday.
+ *
+ * The buttons ship with concrete dates because the routes need particular
+ * weekdays to be interesting (12217 runs Tue/Fri, so Puri -> Chandigarh needs a
+ * Tuesday). The window rolls, so those dates go stale and would be rejected;
+ * this re-anchors each one to the first matching weekday that is bookable. */
+function reanchor(date, min, max){
+  if(date>=min&&date<=max)return date;
+  const wanted=new Date(date+'T12:00:00').getDay();
+  for(let d=new Date(min+'T12:00:00');d<=new Date(max+'T12:00:00');d.setDate(d.getDate()+1))
+    if(d.getDay()===wanted)return d.toISOString().slice(0,10);
+  return min;
+}
+async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();for(const s of meta.stations){if(!stationNames[s.code])stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());const opt=document.createElement('option');opt.value=s.code;opt.label=stationNames[s.code];$('stations').append(opt);}if(meta.dates){const[min,max]=meta.dates;[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${min} to ${max} (${meta.window_days||10} days from today, rolling).`;if($('date').value<min||$('date').value>max)$('date').value=min;for(const button of document.querySelectorAll('[data-route]')){const[from,to,date]=button.dataset.route.split(',');button.dataset.route=[from,to,reanchor(date,min,max)].join(',');}}updateStationNames();await loadBookings();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
 initialize();

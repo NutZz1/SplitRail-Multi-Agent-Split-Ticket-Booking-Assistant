@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for cli.py: the scripted demo scenarios and the input validation,
 called as functions (no shelling out, no stdout parsing).
 """
@@ -25,13 +25,13 @@ def system(store):
 # demo scenarios
 # --------------------------------------------------------------------------- #
 def test_demo_has_four_scenarios():
-    assert len(cli.DEMO_SCENARIOS) == 4
-    labels = [label for label, _, _ in cli.DEMO_SCENARIOS]
+    assert len(cli.demo_labels()) == 4
+    labels = [label for label, _, _ in cli.demo_labels()]
     assert labels[0].startswith("1.") and labels[3].startswith("4.")
 
 
 def test_demo_scenario_1_sbc_mas(system):
-    label, query, _ = cli.DEMO_SCENARIOS[0]
+    label, query, _ = cli.demo_labels()[0]
     rec, secs = cli.resolve_timed(system, query)
     assert rec.found
     transfers = sorted(o.candidate.transfer_count for o in rec.ranked_options)
@@ -44,7 +44,7 @@ def test_demo_scenario_1_sbc_mas(system):
 
 
 def test_demo_scenario_2_puri_cdg(system):
-    label, query, _ = cli.DEMO_SCENARIOS[1]
+    label, query, _ = cli.demo_labels()[1]
     rec, secs = cli.resolve_timed(system, query)
     assert rec.found
     assert rec.best.candidate.agent_name == "DifferentTrainSearchAgent"
@@ -54,7 +54,7 @@ def test_demo_scenario_2_puri_cdg(system):
 
 
 def test_demo_scenario_3_hard_class_no_solution(system):
-    label, query, _ = cli.DEMO_SCENARIOS[2]
+    label, query, _ = cli.demo_labels()[2]
     rec, secs = cli.resolve_timed(system, query)
     assert not rec.found and rec.ranked_options == ()
     assert "CC" in rec.failure_reason
@@ -63,7 +63,7 @@ def test_demo_scenario_3_hard_class_no_solution(system):
 
 
 def test_demo_scenario_4_wrong_day(system):
-    label, query, _ = cli.DEMO_SCENARIOS[3]
+    label, query, _ = cli.demo_labels()[3]
     assert query.travel_date.strftime("%a") == "Wed"
     assert not system.store.runs_on_date("12217", query.travel_date.isoformat())
     rec, secs = cli.resolve_timed(system, query)
@@ -76,7 +76,7 @@ def test_demo_scenario_4_wrong_day(system):
 
 def test_run_demo_returns_all_scenarios_in_order(system):
     results = cli.run_demo(system)
-    assert [label for label, _, _ in results] == [label for label, _, _ in cli.DEMO_SCENARIOS]
+    assert [label for label, _, _ in results] == [label for label, _, _ in cli.demo_labels()]
     assert [rec.found for _, rec, _ in results] == [True, True, False, False]
     for _, rec, secs in results:
         assert secs < 5.0
@@ -84,13 +84,13 @@ def test_run_demo_returns_all_scenarios_in_order(system):
 
 
 def test_format_recommendation_marks_the_winner_and_shows_every_option(system):
-    rec, secs = cli.resolve_timed(system, cli.DEMO_SCENARIOS[0][1])
+    rec, secs = cli.resolve_timed(system, cli.demo_labels()[0][1])
     text = cli.format_recommendation(rec, secs)
     assert "RECOMMENDED" in text and text.count("RECOMMENDED") == 1
     assert "#1" in text and "#2" in text
     assert "transfer at BNC" in text and "night yes" in text and "coach distance" in text
     assert "resolve() took" in text
-    failed, secs2 = cli.resolve_timed(system, cli.DEMO_SCENARIOS[2][1])
+    failed, secs2 = cli.resolve_timed(system, cli.demo_labels()[2][1])
     text2 = cli.format_recommendation(failed, secs2)
     assert "NO ITINERARY FOUND" in text2 and "candidates considered" in text2
 
@@ -103,7 +103,7 @@ def test_demo_train_listing_comes_from_the_database(store):
     for tn in store.get_demo_train_numbers():
         assert tn in text
     assert "12658" in text and "daily" in text and "TUE/FRI" in text
-    assert "2026-09-10" in text and "2026-09-25" in text
+    assert "2026-09-10" in text and "2026-09-19" in text
 
 
 # --------------------------------------------------------------------------- #
@@ -112,9 +112,9 @@ def test_demo_train_listing_comes_from_the_database(store):
 def test_parse_date_accepts_window_and_rejects_outside(store):
     assert cli.parse_date("2026-09-16", store) == dt.date(2026, 9, 16)
     assert cli.parse_date(" 2026-09-10 ", store) == dt.date(2026, 9, 10)
-    assert cli.parse_date("2026-09-25", store) == dt.date(2026, 9, 25)
-    for bad in ("2026-09-09", "2026-09-26", "2025-09-16", "2026-10-01"):
-        with pytest.raises(cli.InputError, match="outside the demo window"):
+    assert cli.parse_date("2026-09-19", store) == dt.date(2026, 9, 19)
+    for bad in ("2026-09-09", "2026-09-20", "2025-09-16", "2026-10-01"):
+        with pytest.raises(cli.InputError, match="outside the 10-day booking window"):
             cli.parse_date(bad, store)
 
 
@@ -167,3 +167,4 @@ def test_prompt_query_builds_a_user_query(monkeypatch, store):
     monkeypatch.setattr("builtins.print", lambda *a, **k: None)
     q = cli.prompt_query(store)
     assert q == UserQuery("SBC", "MAS", dt.date(2026, 9, 16), "3A", True, 1, 2)
+

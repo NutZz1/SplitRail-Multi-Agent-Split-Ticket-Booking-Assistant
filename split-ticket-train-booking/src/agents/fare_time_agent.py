@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.data_store import RailDataStore
-from src.fare_model import compute_fare, compute_total_fare
+from src.fare_model import compute_fare, compute_total_fare, fare_breakdown
 from src.proposal import CandidateItinerary, ItineraryProposal
 
 
@@ -35,6 +35,11 @@ class FareTimeScore:
     wall_clock_minutes: float
     layover_minutes: float  # wall-clock minus moving: dwell at halts + waits between trains
     per_ticket_fares: tuple[float | None, ...] = ()
+    passengers: int = 1
+    #: Per-ticket component breakdown (base / reservation / superfast / GST).
+    #: The flat per-ticket charges are why a split costs more than the direct
+    #: fare it replaces, so they are surfaced rather than folded into a total.
+    fare_breakdowns: tuple[dict | None, ...] = ()
 
     @classmethod
     def not_applicable(cls, proposal_agent_name: str) -> "FareTimeScore":
@@ -58,19 +63,26 @@ class FareTimeAgent:
         self._store = store
 
     async def evaluate(self, candidate: CandidateItinerary) -> FareTimeScore:
-        """Fare and elapsed-time figures for one candidate itinerary."""
+        """Fare and elapsed-time figures for one candidate itinerary.
+
+        Fares are priced for the whole party: ``passenger_count`` rides on the
+        goal state, so a family of four is quoted four fares rather than one.
+        """
         tickets = candidate.tickets
+        people = candidate.passenger_count
         moving = float(candidate.total_time_minutes)
         # Computed from the ticket datetimes, independently of g(n).
         wall = (tickets[-1].alighting_datetime - tickets[0].boarding_datetime).total_seconds() / 60
         return FareTimeScore(
             proposal_agent_name=candidate.agent_name,
             applicable=True,
-            total_fare=compute_total_fare(tickets, self._store),
+            total_fare=compute_total_fare(tickets, self._store, people),
             moving_time_minutes=moving,
             wall_clock_minutes=wall,
             layover_minutes=wall - moving,
-            per_ticket_fares=tuple(compute_fare(t, self._store) for t in tickets),
+            per_ticket_fares=tuple(compute_fare(t, self._store, people) for t in tickets),
+            passengers=people,
+            fare_breakdowns=tuple(fare_breakdown(t, self._store, people) for t in tickets),
         )
 
     async def evaluate_all(self, proposal: ItineraryProposal) -> tuple[FareTimeScore, ...]:

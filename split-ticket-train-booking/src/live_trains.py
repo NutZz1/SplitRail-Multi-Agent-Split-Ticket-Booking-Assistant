@@ -35,13 +35,21 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 # Identify the project honestly rather than disguising the request.
 USER_AGENT = "SplitRail/1.0 (academic project; +https://github.com/NutZz1/SplitRail-Multi-Agent-Split-Ticket-Booking-Assistant)"
 
-# Messages erail returns in place of results.
+# Messages erail returns in place of results, and which the caller must treat
+# as a FAILURE (fall back to another source).
 _ERRORS = {
-    "No direct trains found": "No direct train runs between these stations.",
     "From station not found": "The origin station code was not recognised.",
     "To station not found": "The destination station code was not recognised.",
     "Please try again after some time.": "The live timetable service is busy.",
 }
+
+# "No direct trains found" is not in the table above on purpose. It is erail
+# ANSWERING -- this pair has no direct service -- not erail failing. Raising
+# here would make the caller fall back to the bundled 2020 snapshot and show
+# trains that may no longer run, which is the opposite of what the fallback
+# chain is for. RailRadar already returns an empty list in the same
+# situation; this keeps the two providers consistent.
+_NO_TRAINS = "No direct trains found"
 
 
 class LiveLookupError(RuntimeError):
@@ -170,6 +178,8 @@ def parse_between_stations(payload: str, origin: Optional[str] = None,
         raise LiveLookupError("The live timetable returned an empty response.")
 
     head = blocks[0].replace("~", "").split("<")[0].strip()
+    if head.startswith(_NO_TRAINS):
+        return []  # an answer, not a failure -- see _NO_TRAINS above
     for marker, message in _ERRORS.items():
         if head.startswith(marker):
             raise LiveLookupError(message)

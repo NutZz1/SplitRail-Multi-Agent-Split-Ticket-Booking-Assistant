@@ -2,6 +2,7 @@
 import pytest
 
 from src.data_store import RailDataStore
+from tests.markers import requires_full_network
 
 
 @pytest.fixture(scope="module")
@@ -14,11 +15,13 @@ def _numbers(runs):
     return {r.train_number for r in runs}
 
 
+@requires_full_network
 def test_finds_known_direct_trains(store):
     """Brindavan (12640) and Lalbagh (12608) both run SBC -> MAS."""
     assert {"12640", "12608"} <= _numbers(store.get_direct_trains("SBC", "MAS"))
 
 
+@requires_full_network
 def test_direction_is_respected(store):
     """12610 runs SBC->MAS and 12609 the reverse; neither appears on both."""
     forward = _numbers(store.get_direct_trains("SBC", "MAS"))
@@ -41,6 +44,7 @@ def test_results_sorted_by_departure(store):
     assert departures == sorted(departures)
 
 
+@requires_full_network
 def test_duration_handles_overnight(store):
     """Mumbai Rajdhani departs NDLS 16:30 and arrives BCT 08:35 next day."""
     rajdhani = next(r for r in store.get_direct_trains("NDLS", "BCT")
@@ -49,6 +53,7 @@ def test_duration_handles_overnight(store):
     assert rajdhani.to_day == rajdhani.from_day + 1
 
 
+@requires_full_network
 def test_stops_between_counts_halts_not_passthroughs(store):
     """Shatabdi 12028 makes only a couple of commercial halts SBC -> MAS."""
     shatabdi = next(r for r in store.get_direct_trains("SBC", "MAS")

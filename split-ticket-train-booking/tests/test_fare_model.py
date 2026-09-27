@@ -7,7 +7,15 @@ import datetime as dt
 import pytest
 
 from src.distance import haversine_km, route_distance_km, segment_distance_km
-from src.fare_model import FARE_PER_KM, compute_fare, compute_total_fare, ticket_distance_km
+from src.fare_model import (
+    CLASS_FACTOR,
+    FARE_CLASSES,
+    base_fare,
+    compute_fare,
+    compute_total_fare,
+    fare_breakdown,
+    ticket_distance_km,
+)
 from src.state import Ticket
 
 MAIL = "12658"
@@ -96,18 +104,82 @@ def test_fare_constants_are_marked_synthetic():
     import src.fare_model as fm
     src_text = inspect.getsource(fm)
     assert "SYNTHETIC" in src_text
-    assert set(FARE_PER_KM) >= {"SL", "3A", "2A", "1A", "CC", "2S"}
-    assert FARE_PER_KM["SL"] < FARE_PER_KM["3A"] < FARE_PER_KM["2A"] < FARE_PER_KM["1A"]
+    assert set(FARE_CLASSES) >= {"SL", "3A", "2A", "1A", "CC", "2S"}
+    assert CLASS_FACTOR["2S"] < CLASS_FACTOR["SL"] < CLASS_FACTOR["3A"] < CLASS_FACTOR["2A"] < CLASS_FACTOR["1A"]
 
 
+# --------------------------------------------------------------------------- #
+# Telescopic base fare
+# --------------------------------------------------------------------------- #
+def test_base_fare_is_continuous_and_increasing():
+    previous = 0.0
+    for km in range(0, 2000, 25):
+        current = base_fare(km)
+        assert current >= previous
+        previous = current
+    assert base_fare(0) == 0
+
+
+def test_marginal_rate_falls_with_distance():
+    """The defining property of a telescopic tariff: later kilometres cost less."""
+    first_hundred = base_fare(100) - base_fare(0)
+    later_hundred = base_fare(1000) - base_fare(900)
+    assert later_hundred < first_hundred
+
+
+def test_base_fare_is_subadditive():
+    """base_fare(a + b) < base_fare(a) + base_fare(b) -- why a split costs more."""
+    for a, b in [(100, 100), (250, 450), (700, 800), (50, 1200)]:
+        assert base_fare(a + b) < base_fare(a) + base_fare(b)
+
+
+# --------------------------------------------------------------------------- #
+# Ticket fares
+# --------------------------------------------------------------------------- #
 def test_compute_fare_sbc_mas_by_class(store):
     km = ticket_distance_km(_ticket(MAIL, "SBC", "MAS", "S1", "SL"), store)
     print(f"\nSBC->MAS on 12658 = {km:.1f} km")
+    fares = {}
     for coach, cls in [("S1", "SL"), ("B1", "3A"), ("A1", "2A"), ("H1", "1A")]:
-        fare = compute_fare(_ticket(MAIL, "SBC", "MAS", coach, cls), store)
-        print(f"  {cls}: Rs {fare}")
-        assert fare == pytest.approx(km * FARE_PER_KM[cls], abs=0.01)
-    assert compute_fare(_ticket(MAIL, "SBC", "MAS", "S1", "SL"), store) < compute_fare(_ticket(MAIL, "SBC", "MAS", "H1", "1A"), store)
+        fares[cls] = compute_fare(_ticket(MAIL, "SBC", "MAS", coach, cls), store)
+        print(f"  {cls}: Rs {fares[cls]}")
+    assert fares["SL"] < fares["3A"] < fares["2A"] < fares["1A"]
+    # Every fare exceeds the bare telescopic base: the flat charges are added.
+    assert fares["SL"] > base_fare(km) * CLASS_FACTOR["SL"]
+
+
+def test_breakdown_accounts_for_every_rupee(store):
+    parts = fare_breakdown(_ticket(MAIL, "SBC", "MAS", "B1", "3A"), store)
+    assert parts["total"] == pytest.approx(
+        parts["base"] + parts["reservation_charge"] + parts["superfast_charge"] + parts["gst"], abs=0.02)
+    assert parts["gst"] > 0, "3A is air-conditioned, so GST applies"
+
+
+def test_gst_applies_to_ac_classes_only(store):
+    assert fare_breakdown(_ticket(MAIL, "SBC", "MAS", "S1", "SL"), store)["gst"] == 0
+    assert fare_breakdown(_ticket(MAIL, "SBC", "MAS", "B1", "3A"), store)["gst"] > 0
+
+
+def test_splitting_a_journey_costs_more_than_riding_it_through(store):
+    """The headline property. A split buys a confirmed berth, never a cheaper fare.
+
+    Both effects push the same way: the telescopic base is subadditive, and
+    the reservation + superfast charges are paid once per ticket.
+    """
+    direct = compute_fare(_ticket(MAIL, "SBC", "MAS", "S1", "SL"), store)
+    split = compute_total_fare(
+        (_ticket(MAIL, "SBC", "KPD", "S1", "SL"), _ticket(MAIL, "KPD", "MAS", "S2", "SL")), store)
+    print(f"\ndirect Rs {direct} vs split Rs {split} (+Rs {split - direct:.0f})")
+    assert split > direct
+    # The gap is at least the second set of flat charges.
+    assert split - direct >= 50
+
+
+def test_passenger_count_multiplies_the_fare(store):
+    one = compute_fare(_ticket(MAIL, "SBC", "MAS", "B1", "3A"), store, passengers=1)
+    four = compute_fare(_ticket(MAIL, "SBC", "MAS", "B1", "3A"), store, passengers=4)
+    assert four == pytest.approx(one * 4, abs=0.05)
+    assert compute_fare(_ticket(MAIL, "SBC", "MAS", "B1", "3A"), store, passengers=0) is None
 
 
 def test_compute_fare_none_for_unknown_class_or_missing_coords(store):
@@ -115,12 +187,16 @@ def test_compute_fare_none_for_unknown_class_or_missing_coords(store):
     assert compute_fare(_ticket(MAIL, "SBC", "MAS", "X1", "XX"), store) is None
     code = store._conn.execute("SELECT code FROM stations WHERE lat IS NULL LIMIT 1").fetchone()["code"]
     assert compute_fare(_ticket("99999", code, "MAS", "S1", "SL"), store) is None
+    assert fare_breakdown(_ticket(MAIL, "SBC", "MAS", "X1", "XX"), store) is None
 
 
 def test_compute_fare_falls_back_to_straight_line_off_route(store):
     # stations not on the ticket's train route: route distance fails, straight-line used
-    t = _ticket("99999", "SBC", "MAS", "S1", "SL")
-    assert compute_fare(t, store) == pytest.approx(segment_distance_km("SBC", "MAS", store) * FARE_PER_KM["SL"], abs=0.01)
+    km = segment_distance_km("SBC", "MAS", store)
+    expected = fare_breakdown(_ticket(MAIL, "SBC", "MAS", "S1", "SL"), store)
+    off_route = fare_breakdown(_ticket("99999", "SBC", "MAS", "S1", "SL"), store)
+    assert off_route["distance_km"] == pytest.approx(km, abs=0.1)
+    assert off_route["total"] < expected["total"]  # straight line is shorter than the track
 
 
 def test_compute_total_fare_sums_and_never_partial(store):

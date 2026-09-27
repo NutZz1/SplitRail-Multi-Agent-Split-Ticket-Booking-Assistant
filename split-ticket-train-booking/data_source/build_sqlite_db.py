@@ -24,10 +24,19 @@ Schema
   seat_availability(train_number, from_station, to_station, coach_code, status)
   train_run_pattern(train_number, day_of_week)
   train_run_dates(train_number, run_date)
+  db_meta(key PK, value)
+
+Run dates are NOT copied from train_run_calendar.json's frozen
+``running_dates`` list. Only the weekday pattern (``runs_on``) is real
+intent; the dates are expanded onto the rolling window from
+:mod:`src.demo_window`, so a rebuild always covers today .. today + 9 and
+the demo never expires. ``db_meta`` records which window this file was
+built for, so callers can detect a stale database and rebuild.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
 import sqlite3
@@ -36,6 +45,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_OUT = HERE.parent / "railway.db"
+
+sys.path.insert(0, str(HERE.parent))  # so `src` imports work when run as a script
+
+from src.demo_window import WINDOW_DAYS, running_dates, window_start  # noqa: E402
 
 SCHEMA = """
 CREATE TABLE stations (
@@ -118,6 +131,11 @@ CREATE TABLE train_run_dates (
     run_date TEXT NOT NULL,
     PRIMARY KEY (train_number, run_date)
 );
+
+CREATE TABLE db_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -126,7 +144,16 @@ def _load(name: str):
         return json.load(f)
 
 
-def build(out_path: Path) -> None:
+def build(out_path: Path, start: dt.date | None = None) -> None:
+    """Write a fresh railway.db whose run dates cover the window beginning ``start``.
+
+    ``start`` defaults to today (or ``SPLITRAIL_WINDOW_START`` when pinned).
+    Bookings are deliberately NOT stored here: this file is opened
+    ``mode=ro&immutable=1`` and is rebuilt whenever the window moves, so a
+    booking written into it would be lost. They live in ``bookings.db``
+    (see :mod:`src.booking_store`).
+    """
+    start = start or window_start()
     if out_path.exists():
         os.remove(out_path)
 
@@ -178,7 +205,10 @@ def build(out_path: Path) -> None:
     schedules = (_load("schedules_clean.json") if (HERE / "schedules_clean.json").exists()
                  else _load("demo_subset.json")["schedules"])
 
-    def stop_rows():
+    # `schedules` is bound as a default rather than captured: it is deleted
+    # below to free ~65 MB, and a closure would leave this generator reading a
+    # name that no longer exists if it were ever consumed lazily.
+    def stop_rows(schedules=schedules):
         for train_number, stops in schedules.items():
             for order, s in enumerate(stops):
                 yield (
@@ -244,13 +274,29 @@ def build(out_path: Path) -> None:
         "INSERT INTO train_run_pattern VALUES (?, ?)",
         ((tn, dow) for tn, c in calendar.items() for dow in c["runs_on"]),
     )
+    # The frozen c["running_dates"] is ignored on purpose: only the weekday
+    # pattern is meaningful, and it is expanded onto the current window so a
+    # rebuild always covers today .. today + WINDOW_DAYS - 1.
     cur.executemany(
         "INSERT INTO train_run_dates VALUES (?, ?)",
-        ((tn, d) for tn, c in calendar.items() for d in c["running_dates"]),
+        ((tn, d) for tn, c in calendar.items() for d in running_dates(c["runs_on"], start)),
     )
     n_dates = cur.execute("SELECT COUNT(*) FROM train_run_dates").fetchone()[0]
     print(f"train_run_pattern:   {len(calendar):>8,} trains")
     print(f"train_run_dates:     {n_dates:>8,}")
+
+    # --- db_meta ----------------------------------------------------------
+    last = start + dt.timedelta(days=WINDOW_DAYS - 1)
+    cur.executemany(
+        "INSERT INTO db_meta VALUES (?, ?)",
+        [
+            ("window_start", start.isoformat()),
+            ("window_end", last.isoformat()),
+            ("window_days", str(WINDOW_DAYS)),
+            ("built_at", dt.datetime.now().isoformat(timespec="seconds")),
+        ],
+    )
+    print(f"booking window:      {start.isoformat()} .. {last.isoformat()} ({WINDOW_DAYS} days)")
 
     conn.commit()
     conn.execute("VACUUM")

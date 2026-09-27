@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: split-ticket-train-booking
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the floor the pinned NetworkX needs; 3.13 catches deprecations early.
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff==0.15.3
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        # The suite builds its own window-pinned railway.db in conftest, so no
+        # separate build step is needed. Tests that require the full 5,208-train
+        # timetable skip: that file is 65 MB and is not committed.
+        run: pytest -q
