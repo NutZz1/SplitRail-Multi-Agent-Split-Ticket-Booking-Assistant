@@ -18,7 +18,7 @@ from src.demo_scenarios import ensure_database
 from src.demo_window import WINDOW_DAYS
 from src.live_cache import MISSING, live_trains_cache
 from src.live_trains import LiveLookupError, fetch_between_stations
-from src.state import UserQuery
+from src.state import SEAT_CHANGE_TOLERANCES, UserQuery
 
 WEB = Path(__file__).parent / "web"
 # Live lookups reach a third-party site; --offline turns them off.
@@ -49,8 +49,11 @@ def search(system, payload):
     transfers = payload.get("max_transfers", 2)
     if type(transfers) is not int or not 0 <= transfers <= 2:
         raise ValueError("Choose between zero and two transfers.")
+    tolerance = payload.get("seat_change_tolerance", "any")
+    if tolerance not in SEAT_CHANGE_TOLERANCES:
+        raise ValueError(f"seat_change_tolerance must be one of {', '.join(SEAT_CHANGE_TOLERANCES)}.")
     query = UserQuery(origin, destination, date, travel_class,
-                      travel_class is not None, transfers, 1)
+                      travel_class is not None, transfers, 1, tolerance)
     rec, seconds = resolve_timed(system, query)
     options = []
     for i, option in enumerate(rec.ranked_options):
@@ -68,6 +71,9 @@ def search(system, payload):
         options.append({"id": i, "tickets": tickets, "transfers": candidate.transfer_count,
                         "risky": candidate.is_risky, "score": option.final_score,
                         "fare_imputed": option.fare_imputed,
+                        "pareto_optimal": option.pareto_optimal,
+                        "confidence": option.confidence,
+                        "degraded_agents": list(option.degraded_agents),
                         "fare": asdict(option.fare_time_score),
                         "comfort": asdict(option.transfer_score)})
     return {"options": options, "seconds": seconds, "failure_reason": rec.failure_reason,

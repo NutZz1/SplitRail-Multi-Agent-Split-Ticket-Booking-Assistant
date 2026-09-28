@@ -10,6 +10,7 @@ same-train coach transfer should be generated.
 from __future__ import annotations
 
 import datetime as dt
+from dataclasses import replace
 
 import pytest
 
@@ -18,6 +19,7 @@ from src.rail_graph import segment_minutes
 from src.state import JourneyState, Ticket, UserQuery, initial_state
 from src.constraint_checks import bookable_coaches
 from src.successors import (
+    MAX_SHORT_WALK_COACH_POSITIONS,
     MIN_COACH_SWITCH_MINUTES,
     best_coach_per_class,
     coach_class,
@@ -212,6 +214,57 @@ def test_at_bnc_continue_and_transfer_are_generated(store):
         assert t.cumulative_time_minutes == state.cumulative_time_minutes  # transferring costs no moving time
     # one transfer per class, and the SL pick is the nearest bookable S-coach to S1
     assert len({t.current_class for t in k["TRANSFER"]}) == len(k["TRANSFER"])
+
+
+# --------------------------------------------------------------------------- #
+# seat_change_tolerance (a real search constraint, not a display filter)
+# --------------------------------------------------------------------------- #
+def test_seat_change_tolerance_none_generates_no_transfer_at_bnc(store):
+    """"none" must suppress every same-train coach-switch successor at BNC --
+    the one stop on 12658 whose halt reaches MIN_COACH_SWITCH_MINUTES -- while
+    leaving CONTINUE untouched."""
+    query = replace(QUERY, seat_change_tolerance="none")
+    state = on_board(store, query, "BNC", "S1")
+    succ = get_successors(state, query, store)
+    k = kinds(state, succ)
+    assert k["TRANSFER"] == []
+    assert len(k["CONTINUE"]) == 1  # unrelated to seat_change_tolerance
+
+
+def test_seat_change_tolerance_any_reproduces_default_candidate_set(store):
+    """"any" (the default) must be byte-identical to today's behaviour: the
+    same successors as an unset seat_change_tolerance."""
+    assert QUERY.seat_change_tolerance == "any"
+    query_explicit = replace(QUERY, seat_change_tolerance="any")
+    state_default = on_board(store, QUERY, "BNC", "S1")
+    state_explicit = on_board(store, query_explicit, "BNC", "S1")
+    succ_default = get_successors(state_default, QUERY, store)
+    succ_explicit = get_successors(state_explicit, query_explicit, store)
+    assert succ_default == succ_explicit
+    assert kinds(state_default, succ_default)["TRANSFER"]  # sanity: this dataset has some to compare
+
+
+def test_seat_change_tolerance_short_walk_admits_near_and_prunes_far(store):
+    """"short_walk" must keep every switch within MAX_SHORT_WALK_COACH_POSITIONS
+    of S1 and drop every switch further than that."""
+    state = on_board(store, QUERY, "BNC", "S1")  # QUERY's default tolerance is "any"
+    transfers_any = kinds(state, get_successors(state, QUERY, store))["TRANSFER"]
+    with_distance = [(t, store.coach_distance(MAIL, "S1", t.current_coach)) for t in transfers_any]
+    near = [t for t, d in with_distance if d is not None and d <= MAX_SHORT_WALK_COACH_POSITIONS]
+    far = [t for t, d in with_distance if d is None or d > MAX_SHORT_WALK_COACH_POSITIONS]
+    if not near or not far:
+        pytest.skip("dataset does not offer both a near and a far same-train switch from S1 at BNC")
+
+    query_short = replace(QUERY, seat_change_tolerance="short_walk")
+    state_short = on_board(store, query_short, "BNC", "S1")
+    transfers_short = kinds(state_short, get_successors(state_short, query_short, store))["TRANSFER"]
+    kept = {t.current_coach for t in transfers_short}
+
+    assert {t.current_coach for t in near} <= kept
+    assert not ({t.current_coach for t in far} & kept)
+    for t in transfers_short:
+        d = store.coach_distance(MAIL, "S1", t.current_coach)
+        assert d is not None and d <= MAX_SHORT_WALK_COACH_POSITIONS
 
 
 def test_at_kpd_no_transfer_is_generated(store):

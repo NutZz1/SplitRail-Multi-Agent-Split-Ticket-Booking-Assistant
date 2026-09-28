@@ -114,6 +114,8 @@ fieldset p { font-size: 11px; color: #75806e; line-height: 1.6; margin: 0 0 4px 
 .train-number { font-size: 12px; color: #697a5f; margin-top: 4px; }
 .availability { margin-left: auto; color: #487042; background: #edf5e8; padding: 6px 9px; font-size: 10px; border-radius: 5px; white-space: nowrap; }
 .availability.risk { background: #fbefd8; color: #866022; }
+.pareto-badge { color: #4a5a8a; background: #e9edf7; padding: 6px 9px; font-size: 10px; border-radius: 5px; white-space: nowrap; cursor: help; }
+.degraded-badge { color: #866022; background: #fbefd8; padding: 6px 9px; font-size: 10px; border-radius: 5px; white-space: nowrap; cursor: help; }
 .card-journey { display: grid; grid-template-columns: 1fr 1.15fr 1fr 1fr; gap: 24px; align-items: center; padding: 21px 22px; }
 .station-time { font-family: 'Manrope', sans-serif; font-size: 32px; letter-spacing: -1.2px; font-weight: 750; }
 .day-offset { font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0; color: #aa6329; vertical-align: top; margin-left: 4px; }

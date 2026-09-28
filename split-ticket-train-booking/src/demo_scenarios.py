@@ -30,6 +30,7 @@ from src.final_recommendation import FinalRecommendation
 from src.heuristic import RailHeuristic
 from src.rail_graph import build_graph
 from src.state import UserQuery
+from src.trace import TraceRecorder
 
 VALID_CLASSES: tuple[str, ...] = FARE_CLASSES  # 2S, SL, CC, 3A, 2A, EC, 1A
 
@@ -118,10 +119,13 @@ def build_system(
     )
 
 
-def resolve_timed(system: System, query: UserQuery) -> tuple[FinalRecommendation, float]:
-    """Synchronous convenience (CLI): resolve and time it."""
+def resolve_timed(
+    system: System, query: UserQuery, trace: TraceRecorder | None = None
+) -> tuple[FinalRecommendation, float]:
+    """Synchronous convenience (CLI): resolve and time it. ``trace`` is passed
+    straight through to CoordinatorAgent.resolve() and is None (off) by default."""
     t0 = time.perf_counter()
-    rec = asyncio.run(system.coordinator.resolve(query))
+    rec = asyncio.run(system.coordinator.resolve(query, trace=trace))
     return rec, time.perf_counter() - t0
 
 

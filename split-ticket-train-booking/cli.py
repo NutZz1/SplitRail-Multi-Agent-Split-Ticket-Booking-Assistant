@@ -6,6 +6,7 @@ Split-ticket train booking assistant -- command-line entry point.
     python cli.py --demo-bookings  scripted CRUD walkthrough over the rolling booking window
     python cli.py --list-trains    the demo trains with real availability / run-date coverage
     python cli.py --no-pool        run searches in-process instead of the worker-process pool
+    python cli.py --trace          print the coordination trace (agent-by-agent event log) for each query
 
 This is a thin wrapper around CoordinatorAgent.resolve(): it validates user
 INPUT at the boundary and formats the OUTPUT. It adds no search, scoring or
@@ -38,7 +39,8 @@ from src.demo_scenarios import (  # noqa: E402  (shared with web.py -- one sourc
 )
 from src.demo_window import WINDOW_DAYS, window_dates  # noqa: E402
 from src.final_recommendation import FinalRecommendation, RankedItinerary  # noqa: E402
-from src.state import UserQuery  # noqa: E402
+from src.state import SEAT_CHANGE_TOLERANCES, UserQuery  # noqa: E402
+from src.trace import TraceRecorder  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -57,12 +59,22 @@ def parse_int(text: str, default: int, minimum: int, label: str) -> int:
     return value
 
 
+def parse_seat_change_tolerance(text: str) -> str:
+    text = text.strip().lower() or "any"
+    if text not in SEAT_CHANGE_TOLERANCES:
+        raise InputError(f"seat change tolerance must be one of {', '.join(SEAT_CHANGE_TOLERANCES)}.")
+    return text
+
+
 # --------------------------------------------------------------------------- #
 # Output formatting
 # --------------------------------------------------------------------------- #
 def format_option(index: int, option: RankedItinerary) -> str:
     c, f, t = option.candidate, option.fare_time_score, option.transfer_score
     tag = "  <-- RECOMMENDED" if index == 1 else ""
+    tag += "  [PARETO-OPTIMAL]" if option.pareto_optimal else ""
+    if option.degraded_agents:
+        tag += f"  [DEGRADED: {', '.join(option.degraded_agents)} unavailable, confidence {option.confidence:.1f}]"
     kind = {"SameTrainSearchAgent": "same-train", "DifferentTrainSearchAgent": "different-train"}.get(c.agent_name, c.agent_name)
     lines = [f"  #{index}  final_score {option.final_score:,.1f}   [{kind}]{tag}"]
     for i, tk in enumerate(c.tickets, 1):
@@ -111,6 +123,18 @@ def format_recommendation(rec: FinalRecommendation, seconds: float) -> str:
             f"{rec.duplicate_candidates_merged} duplicate(s) merged, "
             f"{rec.candidates_pruned_by_hard_constraint} pruned by hard constraints)"
         )
+        n_front = sum(1 for o in rec.ranked_options if o.pareto_optimal)
+        out.append(
+            f"[PARETO-OPTIMAL] marks the {n_front} option(s) no other option beats on every one of "
+            "fare, wall-clock time, transfer comfort, and seat risk at once -- not just the single "
+            "recommended trade-off above."
+        )
+        if any(o.degraded_agents for o in rec.ranked_options):
+            out.append(
+                "[DEGRADED] marks an option where one Stage-2 evaluator failed and was substituted "
+                "with a conservative placeholder rather than taking down the whole recommendation; "
+                "confidence < 1.0 says how much of its scoring is real."
+            )
         for i, option in enumerate(rec.ranked_options, 1):
             out.append(format_option(i, option))
     out.append(f"resolve() took {seconds * 1000:.0f} ms")
@@ -149,15 +173,20 @@ def run_demo(system: System) -> list[tuple[str, FinalRecommendation, float]]:
     return [(label, *resolve_timed(system, query)) for label, query, _ in demo_labels()]
 
 
-def print_demo(system: System) -> None:
+def print_demo(system: System, trace: bool = False) -> None:
     print(format_demo_trains(system.store))
     print()
-    for (label, _, expectation), (_, rec, secs) in zip(demo_labels(), run_demo(system)):
+    for label, query, expectation in demo_labels():
+        recorder = TraceRecorder() if trace else None
+        rec, secs = resolve_timed(system, query, trace=recorder)
         print("=" * 78)
         print(label)
         print(f"   {expectation}")
         print("=" * 78)
         print(format_recommendation(rec, secs))
+        if recorder is not None:
+            print()
+            print(recorder.table())
         print()
 
 
@@ -274,15 +303,23 @@ def prompt_query(store: RailDataStore) -> UserQuery:
           f"regardless; your value applies to the different-train search)")
     max_transfers = ask("  max transfers [2]: ", lambda s: parse_int(s, 2, 0, "max transfers"))
     passengers = ask("  passengers [1]: ", lambda s: parse_int(s, 1, 1, "passengers"))
-    return UserQuery(origin, dest, date, cls, hard, max_transfers, passengers)
+    tolerance = ask(
+        f"  same-train seat change tolerance [{'/'.join(SEAT_CHANGE_TOLERANCES)}] (blank = any): ",
+        parse_seat_change_tolerance,
+    )
+    return UserQuery(origin, dest, date, cls, hard, max_transfers, passengers, tolerance)
 
 
-def interactive(system: System) -> None:
+def interactive(system: System, trace: bool = False) -> None:
     while True:
         query = prompt_query(system.store)
         print()
-        rec, secs = resolve_timed(system, query)
+        recorder = TraceRecorder() if trace else None
+        rec, secs = resolve_timed(system, query, trace=recorder)
         print(format_recommendation(rec, secs))
+        if recorder is not None:
+            print()
+            print(recorder.table())
         again = input("\nRun another query? (y/n) [y]: ").strip().lower()
         if again in ("n", "no", "q", "quit", "exit"):
             break
@@ -296,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="scripted CRUD walkthrough: book a coach out and watch the search change")
     ap.add_argument("--list-trains", action="store_true", help="show the demo trains with real data coverage")
     ap.add_argument("--no-pool", action="store_true", help="run searches in-process (no worker processes)")
+    ap.add_argument("--trace", action="store_true",
+                    help="print CoordinatorAgent's coordination trace (agent-by-agent event log) for each query")
     ap.add_argument("--db", default=None, help="path to railway.db (default: alongside this script)")
     args = ap.parse_args(argv)
 
@@ -320,9 +359,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.demo_bookings:
             print_booking_demo(system)
         elif args.demo:
-            print_demo(system)
+            print_demo(system, trace=args.trace)
         else:
-            interactive(system)
+            interactive(system, trace=args.trace)
     finally:
         system.close()
     return 0

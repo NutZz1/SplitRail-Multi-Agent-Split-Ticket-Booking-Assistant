@@ -165,13 +165,30 @@ services while returning no bookable itinerary, and the interface says so.
 - Search by station code with station-name suggestions, travel date, class, and maximum transfers.
 - See **Trains on this line**: every train that actually runs your origin → destination without a change, with departure, arrival, run time, and the days it runs. This prefers **live data** (RailRadar when a key is set, otherwise erail.in), narrowed to trains that genuinely run between the two stations you asked for and to the services running on your travel date. It falls back to the bundled timetable only when live sources are unreachable. The panel always states which source answered.
 - Compare direct and split journeys with estimated fares, total duration, and availability labels.
-- Sort by recommendation, fare, duration, or transfers; filter for confirmed seats or no same-train seat changes.
+- Sort by recommendation, fare, duration, or transfers; filter for confirmed seats. Choose how willing you are to change coach on the same train -- allowed, a short walk only, or not at all -- and the search itself honours it, rather than a display filter thinning out results after the fact.
 - Expand each itinerary for coach details, night transfers, leg fares, and comfort penalties.
 - Inspect the completed agents' search summary and use the sample routes for a walkthrough.
 
 Try **SBC → MAS, 16 September 2026** for direct and coach-change options, or **PURI → CDG, 15 September 2026** for a train connection. Selecting **CC** on SBC → MAS demonstrates the no-results state.
 
-This is a **one-passenger academic demo**, not a live booking service. Availability and operating dates are simulated; fares are estimates. Travel dates cover the **rolling 10-day window** described above. A same-train search allows at most one coach change; display filters only filter the returned candidates. There is no payment flow, and the booking CRUD above is a local reservation ledger, not a real one. Web fonts are optional; the interface falls back to system fonts offline.
+This is a **one-passenger academic demo**, not a live booking service. Availability and operating dates are simulated; fares are estimates. Travel dates cover the **rolling 10-day window** described above. A same-train search allows at most one coach change. There is no payment flow, and the booking CRUD above is a local reservation ledger, not a real one. Web fonts are optional; the interface falls back to system fonts offline.
+
+### Same-train seat change tolerance
+
+`UserQuery.seat_change_tolerance` (`src/state.py`) is a real **search**
+constraint, not a display filter: it controls which same-train coach-switch
+states `same_train_transfer_successors` (`src/successors.py`) generates in
+the first place, so a passenger who says "not allowed" gets the best
+itinerary the search can find *without* a coach switch, never an itinerary
+that assumed one was fine and then got filtered away afterwards -- which
+could otherwise leave an empty results list even when a non-switching
+itinerary existed further down the ranking.
+
+| Value | Search behaviour |
+|---|---|
+| `any` (default) | Every same-train coach switch the search would otherwise find is kept. |
+| `short_walk` | Coach switches are generated, but one further than `MAX_SHORT_WALK_COACH_POSITIONS` (4) coach positions apart is excluded. |
+| `none` | No same-train coach switch is generated at all. |
 
 ## Live timetable data
 
@@ -272,10 +289,59 @@ See [data provenance and backend documentation](split-ticket-train-booking/READM
 - [Environment and agent analysis](docs/environment-analysis.md) — the
   six-property environment classification, the agent type, and why the
   architecture is multi-agent while the search stays centralised.
+- [Ablation: single-agent baseline vs. multi-agent coordinator](docs/ablation.md)
+  — measured wall-clock numbers, and where each architecture actually wins.
 
 ## What changed in this revision
 
-### Fixed
+This revision is the Review 1 pass: formal PEAS/environment documentation,
+plus five engine changes the case study's own architecture had been
+claiming credit for without actually being able to demonstrate.
+
+- **PEAS and environment-analysis docs** (`docs/peas.md`,
+  `docs/environment-analysis.md`), derived from the implementation rather
+  than written in the abstract — see the "docs/" section above.
+- **Seat-change tolerance is now a real search constraint, not a display
+  filter.** `UserQuery.seat_change_tolerance` (`src/state.py`, `"none"` /
+  `"short_walk"` / `"any"`) is read inside
+  `same_train_transfer_successors()` (`src/successors.py`), so "no same-train
+  seat changes" can no longer produce a silently empty result when a
+  non-switching itinerary existed but the search was never asked to look for
+  it. Threaded through `cli.py`, `web.py` (HTTP 400 on an unknown value), and
+  the browser interface, replacing the old post-hoc "no same-train seat
+  changes" filter.
+- **A Pareto front alongside the weighted ranking.**
+  `pareto_front()` (`src/agents/coordinator_agent.py`) marks every
+  candidate no other surviving candidate beats on fare, wall-clock time,
+  transfer comfort, AND seat risk at once —
+  `RankedItinerary.pareto_optimal`, surfaced in the CLI and as a
+  `⚖ Pareto-optimal` badge in the browser. The existing weighted score still
+  decides the default ranking; this adds a view, it does not replace it —
+  see `tests/test_coordinator_agent.py`'s
+  `test_thesis_dearer_confirmed_and_cheaper_waitlisted_are_both_on_the_front`
+  for why that view matters.
+- **Stage 2 now survives one agent failing.** The `SeatTransferAgent` /
+  `FareTimeAgent` gather in `CoordinatorAgent.resolve()` runs with
+  `return_exceptions=True`; a failed evaluation is substituted with a
+  `not_applicable()` placeholder (fare imputed pessimistically, exactly as
+  for a genuinely missing fare) instead of taking the whole recommendation
+  down. `RankedItinerary.confidence` / `.degraded_agents` say what
+  happened, surfaced in the CLI and browser — see
+  `tests/test_scenarios.py::TestScenario11_FaultIsolationBetweenStage2Agents`.
+- **`python cli.py --trace`** prints an ordered, timestamped log of the
+  coordination itself (proposals returned, prunes, every Stage 2 evaluation
+  completing, the Pareto front, the final ranking) — off by default and a
+  no-op on the result either way (`src/trace.py`,
+  `tests/test_trace.py`).
+- **`src/baseline_single_agent.py`**, a sequential, single-process control
+  loop that reuses the identical search/scoring/ranking code as
+  `CoordinatorAgent`, added for the ablation in `docs/ablation.md`: the
+  baseline is measurably faster (no `asyncio.gather()` overhead on searches
+  that are CPU-bound and never actually overlap in one process), and the
+  multi-agent architecture earns its complexity back on graceful
+  degradation and on surfacing the fare-vs-risk trade-off, not on speed.
+
+### Fixed (prior revision)
 
 - **The demo no longer expires.** Run dates were frozen at 2026-09-10 ..
   2026-09-25, so from 26 September every search returned HTTP 400. The

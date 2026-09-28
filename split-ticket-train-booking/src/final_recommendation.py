@@ -20,13 +20,34 @@ class RankedItinerary:
     fare_time_score: FareTimeScore
     final_score: float
     fare_imputed: bool = False  # True if total_fare was None and a pessimistic stand-in was used
+    #: True if no OTHER surviving candidate is at least as good on every one
+    #: of (fare, wall-clock time, transfer penalty, seat risk) and strictly
+    #: better on at least one -- see src.agents.coordinator_agent.pareto_front.
+    #: The weighted final_score above picks ONE winner by a fixed trade-off
+    #: the passenger never set; this flags every option that is the best
+    #: answer for SOME honest ordering of those four priorities, most
+    #: importantly the confirmed-but-dearer vs. cheaper-but-waitlisted
+    #: choice the project's fare model exists to surface.
+    pareto_optimal: bool = False
+    #: 1.0 = every Stage-2 evaluation (SeatTransferAgent + FareTimeAgent) for
+    #: this candidate succeeded; lower when one raised and was substituted
+    #: with a not_applicable() placeholder instead of taking down the whole
+    #: recommendation -- see CoordinatorAgent.resolve()'s
+    #: return_exceptions=True handling.
+    confidence: float = 1.0
+    #: Names of the Stage-2 agents whose evaluate() raised for this
+    #: candidate; empty when confidence == 1.0.
+    degraded_agents: tuple[str, ...] = ()
 
     def describe(self) -> str:
         c, f, t = self.candidate, self.fare_time_score, self.transfer_score
         fare = f"Rs {f.total_fare:,.0f}" if f.total_fare is not None else "fare n/a (imputed)"
         legs = " | ".join(x.describe() for x in c.tickets)
+        tag = "  [PARETO-OPTIMAL]" if self.pareto_optimal else ""
+        if self.degraded_agents:
+            tag += f"  [DEGRADED: {', '.join(self.degraded_agents)} failed, confidence {self.confidence:.1f}]"
         return (
-            f"score {self.final_score:8.1f}  [{c.agent_name}] {legs}\n"
+            f"score {self.final_score:8.1f}  [{c.agent_name}]{tag} {legs}\n"
             f"           moving {f.moving_time_minutes:.0f} min, wall-clock {f.wall_clock_minutes:.0f} min "
             f"(layover {f.layover_minutes:.0f}), {fare}, {c.transfer_count} transfer(s), "
             f"transfer penalty {t.total_feasibility_penalty:.0f}"
@@ -59,6 +80,14 @@ class FinalRecommendation:
     @property
     def best(self) -> RankedItinerary | None:
         return self.ranked_options[0] if self.ranked_options else None
+
+    @property
+    def pareto_front(self) -> tuple[RankedItinerary, ...]:
+        """Every Pareto-optimal option, in the same best-first order as
+        ``ranked_options`` -- a view over what ``CoordinatorAgent`` already
+        computed, not a recomputation (see
+        src.agents.coordinator_agent.pareto_front)."""
+        return tuple(r for r in self.ranked_options if r.pareto_optimal)
 
     def describe(self) -> str:
         q = self.query

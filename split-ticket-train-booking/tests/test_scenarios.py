@@ -307,3 +307,77 @@ class TestScenario9_DemoSubsetCoverageIsExplicit:
         assert "runs on" not in rec.failure_reason                    # not mis-described as a wrong-day case
         summary("9. demo-subset coverage is explicit", rec)
 
+
+# =========================================================================== #
+class TestScenario10_SeatChangeToleranceIsARealSearchConstraint:
+    """The project's own namesake question -- "is changing seats okay for
+    you?" -- used to be answered only by a post-hoc display filter over
+    candidates the search had already returned, which could show an empty
+    list even when a non-switching itinerary existed further down the
+    ranking that the search never got a chance to find. seat_change_tolerance
+    (src.state.UserQuery) is now read INSIDE the search
+    (src.successors.same_train_transfer_successors), so this checks the real
+    behaviour end to end, not just the successor-generation unit tests in
+    tests/test_successors.py."""
+
+    def test_none_never_silently_empties_a_switch_only_result(self, coordinator, store, booking_service):
+        """Book out S2's BNC -> MAS run: 12658's own greedy same-coach pick at
+        BNC under a hard SL constraint (S2, the nearest CONFIRMED SL
+        alternative to boarding coach S1) becomes a dead end, leaving a coach
+        switch to a DIFFERENT SL coach as the only way an SBC -> MAS itinerary
+        can complete at all. Under "any" tolerance this succeeds and every
+        surviving option requires a coach switch; under "none" the coordinator
+        must return an EXPLAINED failure -- never a silently empty options
+        list dressed up as found=True."""
+        capacity = store.coach_capacity("12658", "S2")
+        booking_service.book("12658", WED.isoformat(), "BNC", "MAS", "S2", passenger_count=capacity)
+        base = dict(origin_station="SBC", destination_station="MAS", travel_date=WED,
+                    travel_class_preference="SL", class_is_hard_constraint=True, max_transfers=2)
+
+        rec_any = resolve(coordinator, UserQuery(**base, seat_change_tolerance="any"))
+        assert rec_any.found and rec_any.ranked_options
+        assert all(o.candidate.transfer_count >= 1 for o in rec_any.ranked_options)  # switch-only
+
+        rec_none = resolve(coordinator, UserQuery(**base, seat_change_tolerance="none"))
+        assert not rec_none.found
+        assert rec_none.ranked_options == ()          # an explained failure, not a "found" empty list
+        assert rec_none.failure_reason                # explained, not silent
+        summary("10. seat_change_tolerance=any: switch-only options", rec_any)
+        summary("10b. seat_change_tolerance=none is an explained failure, not a silent empty list", rec_none)
+
+
+# =========================================================================== #
+class RaisingFareTimeAgent:
+    """A stub Stage-2 agent, not a patched real one: FareTimeAgent.evaluate()
+    fails for every candidate, the way a real information source can fail
+    independently of the rest of the pipeline (see docs/environment-analysis.md's
+    "heterogeneous, independently-failing information sources")."""
+
+    name = "FareTimeAgent"
+
+    async def evaluate(self, candidate):
+        raise RuntimeError("synthetic FareTimeAgent failure")
+
+
+class TestScenario11_FaultIsolationBetweenStage2Agents:
+    def test_a_failing_fare_time_agent_never_takes_down_the_recommendation(self, agents, store):
+        """SBC -> MAS with a FareTimeAgent that always raises: the recommendation
+        must still come back, every option must still be REAL transfer-scored
+        (SeatTransferAgent is unaffected), every option's fare must be imputed
+        (never win because of the gap) rather than crash the whole resolve(),
+        and confidence/degraded_agents must say exactly what failed."""
+        same, diff, seat, _real_fare = agents
+        coord = CoordinatorAgent(same, diff, seat, RaisingFareTimeAgent(), store=store)  # type: ignore[arg-type]
+        rec = resolve(coord, UserQuery("SBC", "MAS", WED, max_transfers=2))
+        assert rec.found and rec.ranked_options
+        for o in rec.ranked_options:
+            assert o.confidence < 1.0
+            assert o.degraded_agents == ("FareTimeAgent",)
+            assert o.fare_imputed is True
+            assert o.fare_time_score.total_fare is None       # the placeholder, not a guess
+            assert o.transfer_score.applicable is True         # SeatTransferAgent still ran for real
+        # the split candidate really was scored by SeatTransferAgent, not just defaulted to zero
+        split = next(o for o in rec.ranked_options if o.candidate.transfer_count > 0)
+        assert split.transfer_score.total_feasibility_penalty > 0
+        summary("11. a failing FareTimeAgent degrades gracefully instead of crashing", rec)
+

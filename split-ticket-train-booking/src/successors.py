@@ -22,10 +22,13 @@ Three kinds of move are generated from a :class:`~src.state.JourneyState`:
     From a boarded state at an intermediate real halt: close the in-progress
     ticket here and continue on the same train in a different coach. Only
     allowed when the halt is long enough (``MIN_COACH_SWITCH_MINUTES``), the
-    transfer budget allows it, and the new coach has room for the onward
-    segment. This is the split-ticket mechanism itself. Transfers are never
-    generated at the boarding station: choosing the initial coach is what
-    the ``board`` move already does, and a zero-length ticket is meaningless.
+    transfer budget allows it, the new coach has room for the onward
+    segment, and ``query.seat_change_tolerance`` permits it -- "none"
+    generates no transfer at all, "short_walk" excludes one further than
+    ``MAX_SHORT_WALK_COACH_POSITIONS``, "any" is unrestricted. This is the
+    split-ticket mechanism itself. Transfers are never generated at the
+    boarding station: choosing the initial coach is what the ``board`` move
+    already does, and a zero-length ticket is meaningless.
 
 Availability semantics
     A ticket covers (ticket origin -> alighting station) in one coach and
@@ -59,6 +62,16 @@ logger = logging.getLogger(__name__)
 
 #: Minimum scheduled halt (minutes) for a passenger to change coach on the same train.
 MIN_COACH_SWITCH_MINUTES: float = 5.0
+
+#: Coach-position cap for ``UserQuery.seat_change_tolerance == "short_walk"``:
+#: a switch further than this is excluded outright rather than merely
+#: penalised. Set against SeatTransferAgent.COACH_DISTANCE_WEIGHT (2.0
+#: minutes-equivalent per position, src/agents/seat_transfer_agent.py): 4
+#: positions costs 8 minutes-equivalent, comfortably under both the flat
+#: different-train transfer penalty (20) and the night-transfer penalty (30)
+#: -- i.e. a "short walk" is deliberately capped at less than what it costs
+#: to change trains entirely, not at some fraction of the rake's length.
+MAX_SHORT_WALK_COACH_POSITIONS: int = 4
 
 # Shared constraint checks and helpers live in src.constraint_checks; they are
 # re-exported here so existing imports (tests, agents, searches) keep working.
@@ -188,6 +201,8 @@ def continue_successors(state: JourneyState, query: UserQuery, store: RailDataSt
 
 
 def same_train_transfer_successors(state: JourneyState, query: UserQuery, store: RailDataStore) -> list[JourneyState]:
+    if query.seat_change_tolerance == "none":
+        return []  # the passenger asked never to change coach; nothing to generate
     train_number = state.current_train
     assert train_number is not None
     if not transfer_budget_allows(state, query):
@@ -228,6 +243,14 @@ def same_train_transfer_successors(state: JourneyState, query: UserQuery, store:
     ):
         if not _class_allowed(cls, query):
             continue
+        if query.seat_change_tolerance == "short_walk":
+            distance = store.coach_distance(train_number, state.current_coach, coach)
+            # Unknown rake layout is pruned too, not admitted: SeatTransferAgent
+            # treats an unknown distance as a pessimistic "far" walk (see its
+            # ASSUMED_COACH_DISTANCE_WHEN_UNKNOWN), and a switch this search
+            # cannot confirm is short must not be offered as one.
+            if distance is None or distance > MAX_SHORT_WALK_COACH_POSITIONS:
+                continue
         out.append(replace(
             state,
             current_coach=coach,

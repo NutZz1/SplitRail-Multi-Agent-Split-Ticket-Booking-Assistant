@@ -24,9 +24,13 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from typing import Literal
 
 #: Availability statuses that let the passenger travel but carry a risk.
 RISKY_STATUSES = frozenset({"RAC", "WAITLIST"})
+
+#: Valid values for :attr:`UserQuery.seat_change_tolerance`.
+SEAT_CHANGE_TOLERANCES = ("none", "short_walk", "any")
 
 
 @dataclass(frozen=True)
@@ -40,6 +44,20 @@ class UserQuery:
     class_is_hard_constraint: bool = False
     max_transfers: int = 2
     passenger_count: int = 1
+    #: How willing the passenger is to change coach on the SAME train
+    #: (a same-train split ticket). This is a real SEARCH constraint, not a
+    #: display filter -- see src.successors.same_train_transfer_successors --
+    #: so a passenger who says "none" gets the best itinerary the search can
+    #: find WITHOUT a coach switch, rather than an itinerary that assumed one
+    #: was acceptable and then had it filtered away after the fact.
+    #:
+    #:   "none"       -- no same-train coach switch is generated at all.
+    #:   "short_walk" -- coach switches are generated, but one further apart
+    #:                   than MAX_SHORT_WALK_COACH_POSITIONS (src.successors)
+    #:                   is excluded.
+    #:   "any"        -- unrestricted (default): every coach switch the
+    #:                   search would otherwise generate is kept.
+    seat_change_tolerance: Literal["none", "short_walk", "any"] = "any"
 
     def __post_init__(self) -> None:
         if isinstance(self.travel_date, dt.datetime):
@@ -50,6 +68,11 @@ class UserQuery:
             raise ValueError("passenger_count must be >= 1")
         if self.class_is_hard_constraint and self.travel_class_preference is None:
             raise ValueError("class_is_hard_constraint=True requires a travel_class_preference")
+        if self.seat_change_tolerance not in SEAT_CHANGE_TOLERANCES:
+            raise ValueError(
+                f"seat_change_tolerance must be one of {SEAT_CHANGE_TOLERANCES}, "
+                f"got {self.seat_change_tolerance!r}"
+            )
 
 
 @dataclass(frozen=True)

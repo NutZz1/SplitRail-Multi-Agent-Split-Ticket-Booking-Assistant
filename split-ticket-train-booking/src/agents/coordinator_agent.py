@@ -80,6 +80,7 @@ unmodified. Fixing the heuristic is out of scope here.
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import replace
 
 from src.agents.different_train_search_agent import DifferentTrainSearchAgent
@@ -90,6 +91,9 @@ from src.data_store import RailDataStore
 from src.final_recommendation import FinalRecommendation, RankedItinerary, SearchEffort
 from src.proposal import CandidateItinerary, ItineraryProposal
 from src.state import UserQuery
+from src.trace import TraceRecorder
+
+logger = logging.getLogger(__name__)
 
 #: Rs per minute of moving time (value of time, see module docstring).
 W_TIME: float = 2.0
@@ -145,11 +149,27 @@ class CoordinatorAgent:
         self._store = store
 
     # ------------------------------------------------------------------ #
-    async def resolve(self, query: UserQuery) -> FinalRecommendation:
+    async def resolve(self, query: UserQuery, trace: TraceRecorder | None = None) -> FinalRecommendation:
+        """``trace`` is optional and off by default (see src.trace): pass a
+        fresh :class:`~src.trace.TraceRecorder` to observe the coordination
+        itself -- proposals returned, prunes, each Stage 2 evaluation
+        completing, the Pareto front, the final ranking -- as an ordered,
+        timestamped event log. When ``trace`` is None (the default) this
+        method takes exactly the code path it took before tracing existed."""
+        if trace is not None:
+            trace.record("task_announced",
+                         f"{query.origin_station} -> {query.destination_station} on {query.travel_date}")
+
         # ---- Stage 1: both searches in parallel ----------------------------
         same_query = same_train_query(query)
         same_p, diff_p = await asyncio.gather(self._same.propose(same_query), self._diff.propose(query))
         effort = search_effort(same_p, diff_p)  # surfaced on every outcome; matters most when nothing is found
+        if trace is not None:
+            for p in (same_p, diff_p):
+                trace.record("proposal_returned",
+                             f"{p.agent_name}: {len(p.candidates)} candidate(s), "
+                             f"{p.search_stats.nodes_expanded} node(s) expanded, "
+                             f"{p.search_stats.wall_clock_seconds * 1000:.1f} ms")
 
         if not same_p.found and not diff_p.found:
             # Short-circuit: nothing to score, Stage 2 is never entered.
@@ -170,10 +190,14 @@ class CoordinatorAgent:
         # it once: same leg-signature rule as within a proposal, first wins.
         pooled = dedupe_across_agents(pooled)
         merged = total - len(pooled)
+        if trace is not None:
+            trace.record("duplicates_merged", f"{merged} of {total} candidate(s) merged")
 
         # ---- defensive hard-constraint re-check ---------------------------
         survivors = [c for c in pooled if self._passes_hard_constraints(c, query)]
         pruned = len(pooled) - len(survivors)
+        if trace is not None:
+            trace.record("hard_constraint_prunes", f"{pruned} of {len(pooled)} candidate(s) pruned")
         if not survivors:
             return FinalRecommendation(
                 query=query,
@@ -187,15 +211,55 @@ class CoordinatorAgent:
             )
 
         # ---- Stage 2: every evaluate() for every candidate, one gather ------
-        results = await asyncio.gather(
-            *(self._seat.evaluate(c) for c in survivors),
-            *(self._fare.evaluate(c) for c in survivors),
-        )
-        transfer_scores: list[TransferFeasibilityScore] = list(results[: len(survivors)])
-        fare_scores: list[FareTimeScore] = list(results[len(survivors):])
+        # return_exceptions=True is the fault-isolation point: information
+        # sources fail independently (see the module docstring's Stage 2 and
+        # docs/environment-analysis.md), so one candidate's SeatTransferAgent
+        # or FareTimeAgent call raising must not take down every OTHER
+        # candidate's evaluation, nor the whole recommendation.
+        if trace is None:
+            # Identical to the untraced code path -- no wrapper, no extra frame.
+            raw_results = await asyncio.gather(
+                *(self._seat.evaluate(c) for c in survivors),
+                *(self._fare.evaluate(c) for c in survivors),
+                return_exceptions=True,
+            )
+        else:
+            raw_results = await asyncio.gather(
+                *(_traced_evaluate(self._seat, c, trace) for c in survivors),
+                *(_traced_evaluate(self._fare, c, trace) for c in survivors),
+                return_exceptions=True,
+            )
+        transfer_scores: list[TransferFeasibilityScore] = []
+        fare_scores: list[FareTimeScore] = []
+        degraded_agents: list[tuple[str, ...]] = [() for _ in survivors]
+        for i, c in enumerate(survivors):
+            result = raw_results[i]
+            if isinstance(result, BaseException):
+                logger.warning("%s.evaluate() failed for a %s candidate: %r",
+                               self._seat.name, c.agent_name, result)
+                transfer_scores.append(TransferFeasibilityScore.not_applicable(c.agent_name))
+                degraded_agents[i] = (*degraded_agents[i], self._seat.name)
+            else:
+                transfer_scores.append(result)
+        for i, c in enumerate(survivors):
+            result = raw_results[len(survivors) + i]
+            if isinstance(result, BaseException):
+                logger.warning("%s.evaluate() failed for a %s candidate: %r",
+                               self._fare.name, c.agent_name, result)
+                fare_scores.append(FareTimeScore.not_applicable(c.agent_name))
+                degraded_agents[i] = (*degraded_agents[i], self._fare.name)
+            else:
+                fare_scores.append(result)
 
         # ---- score and rank -------------------------------------------------
-        ranked = rank_candidates(survivors, transfer_scores, fare_scores)
+        ranked = rank_candidates(survivors, transfer_scores, fare_scores, degraded_agents)
+        if trace is not None:
+            n_front = sum(1 for r in ranked if r.pareto_optimal)
+            trace.record("pareto_front_computed", f"{n_front} of {len(ranked)} candidate(s) on the front")
+            best = ranked[0] if ranked else None
+            trace.record("final_ranking",
+                         f"{len(ranked)} option(s); winner: {best.candidate.agent_name} "
+                         f"score {best.final_score:.1f}" if best is not None else "no survivors")
         return FinalRecommendation(
             query=query,
             found=True,
@@ -209,26 +273,47 @@ class CoordinatorAgent:
 
     # ------------------------------------------------------------------ #
     def _passes_hard_constraints(self, c: CandidateItinerary, query: UserQuery) -> bool:
-        """Defense-in-depth. Stage 1 already enforces all of this inside the
-        search (tested), so this should never prune anything; it exists so a
-        future regression in a successor generator cannot leak into a
-        recommendation, and the true prune count is reported either way."""
-        if query.class_is_hard_constraint and any(
-            t.travel_class != query.travel_class_preference for t in c.tickets
-        ):
-            return False
-        if c.transfer_count > query.max_transfers:
-            return False
-        if self._store is not None:
-            date = query.travel_date.isoformat()
-            if any(not self._store.runs_on_date(t.train_number, date) for t in c.tickets):
-                return False
-        return True
+        return passes_hard_constraints(c, query, self._store)
 
 
 # ---------------------------------------------------------------------- #
 # Pure helpers (importable for tests)
 # ---------------------------------------------------------------------- #
+async def _traced_evaluate(agent, candidate: CandidateItinerary, trace: TraceRecorder):
+    """Await ``agent.evaluate(candidate)`` and record its completion -- success
+    or exception -- without changing what it returns or raises. Only ever
+    constructed when ``trace`` is not None (see resolve()), so this wrapper
+    itself never runs when tracing is off."""
+    try:
+        result = await agent.evaluate(candidate)
+    except BaseException as exc:
+        trace.record("stage2_evaluation_completed",
+                     f"{agent.name} on {candidate.agent_name} candidate FAILED: {exc!r}")
+        raise
+    trace.record("stage2_evaluation_completed", f"{agent.name} on {candidate.agent_name} candidate: ok")
+    return result
+
+
+def passes_hard_constraints(c: CandidateItinerary, query: UserQuery, store: RailDataStore | None) -> bool:
+    """Defense-in-depth. Stage 1 already enforces all of this inside the
+    search (tested), so this should never prune anything; it exists so a
+    future regression in a successor generator cannot leak into a
+    recommendation, and the true prune count is reported either way.
+    ``store`` is optional and only used for the run-date re-check (see
+    CoordinatorAgent.__init__)."""
+    if query.class_is_hard_constraint and any(
+        t.travel_class != query.travel_class_preference for t in c.tickets
+    ):
+        return False
+    if c.transfer_count > query.max_transfers:
+        return False
+    if store is not None:
+        date = query.travel_date.isoformat()
+        if any(not store.runs_on_date(t.train_number, date) for t in c.tickets):
+            return False
+    return True
+
+
 def same_train_query(query: UserQuery) -> UserQuery:
     """The query handed to SameTrainSearchAgent: max_transfers capped DOWN to
     SAME_TRAIN_MAX_TRANSFERS_CAP, never raised (see module docstring)."""
@@ -294,18 +379,38 @@ def rank_candidates(
     candidates: list[CandidateItinerary],
     transfer_scores: list[TransferFeasibilityScore],
     fare_scores: list[FareTimeScore],
+    degraded_agents: list[tuple[str, ...]] | None = None,
 ) -> list[RankedItinerary]:
-    """Score every candidate and sort best-first with deterministic tie-breaking."""
+    """Score every candidate and sort best-first with deterministic tie-breaking.
+
+    ``degraded_agents`` (one tuple per candidate, default all-empty) names
+    which Stage-2 agents' evaluate() raised for that candidate -- see
+    CoordinatorAgent.resolve()'s return_exceptions=True handling. A fare
+    evaluation that failed produces a FareTimeScore with total_fare=None,
+    which is imputed exactly like a genuinely missing fare below: the
+    candidate must never win BECAUSE an agent crashed on it.
+    """
+    if degraded_agents is None:
+        degraded_agents = [() for _ in candidates]
     known_fares = [f.total_fare for f in fare_scores if f.total_fare is not None]
     imputed_fare = max(known_fares) if known_fares else 0.0  # pessimistic stand-in for missing data
 
     ranked: list[RankedItinerary] = []
-    for c, t, f in zip(candidates, transfer_scores, fare_scores):
+    for c, t, f, degraded in zip(candidates, transfer_scores, fare_scores, degraded_agents):
         missing = f.total_fare is None
         fare_for_scoring = imputed_fare if missing else f.total_fare  # type: ignore[assignment]
         score = final_score(t, f, fare_for_scoring,
                             rac_legs=c.rac_leg_count, waitlist_legs=c.waitlist_leg_count)
-        ranked.append(RankedItinerary(c, t, f, score, fare_imputed=missing))
+        confidence = 1.0 - len(degraded) / 2.0  # 2 Stage-2 evaluations per candidate
+        ranked.append(RankedItinerary(c, t, f, score, fare_imputed=missing,
+                                      confidence=confidence, degraded_agents=degraded))
+
+    # final_score above collapses the front to ONE winner by a fixed weighting
+    # the passenger never sees; pareto_front() ADDS a view of every option
+    # that is the best answer for SOME honest ordering of the four
+    # objectives, without changing the weighted ranking itself.
+    on_front = {id(r) for r in pareto_front(ranked)}
+    ranked = [replace(r, pareto_optimal=id(r) in on_front) for r in ranked]
 
     def sort_key(r: RankedItinerary) -> tuple:
         f = r.fare_time_score
@@ -318,3 +423,48 @@ def rank_candidates(
 
     ranked.sort(key=sort_key)
     return ranked
+
+
+# ---------------------------------------------------------------------- #
+# Pareto front (a VIEW alongside the weighted ranking above, not a replacement)
+# ---------------------------------------------------------------------- #
+def _pareto_objectives(ranked: list[RankedItinerary]) -> list[tuple[float, float, float, float]]:
+    """(fare, wall-clock minutes, transfer penalty, seat risk) per entry, all minimised.
+
+    Fare reuses the same pessimistic imputation as rank_candidates() (the
+    highest known fare in the batch, or 0 if none is known) so a missing
+    fare cannot look artificially cheap on this axis either. Seat risk
+    reuses W_RAC/W_WAITLIST so it is in the same Rs-equivalent unit as the
+    weighted score, not a new scale invented for this view.
+    """
+    known_fares = [r.fare_time_score.total_fare for r in ranked if r.fare_time_score.total_fare is not None]
+    imputed_fare = max(known_fares) if known_fares else 0.0
+    objectives = []
+    for r in ranked:
+        f = r.fare_time_score
+        fare = f.total_fare if f.total_fare is not None else imputed_fare
+        risk = W_RAC * r.candidate.rac_leg_count + W_WAITLIST * r.candidate.waitlist_leg_count
+        objectives.append((fare, f.wall_clock_minutes, r.transfer_score.total_feasibility_penalty, risk))
+    return objectives
+
+
+def _dominates(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
+    """True if ``a`` is no worse than ``b`` on every objective and strictly better on at least one."""
+    return all(x <= y for x, y in zip(a, b)) and any(x < y for x, y in zip(a, b))
+
+
+def pareto_front(ranked: list[RankedItinerary]) -> list[RankedItinerary]:
+    """The non-dominated subset of ``ranked`` over (fare, wall-clock time,
+    transfer penalty, seat risk), all minimised -- see :func:`_pareto_objectives`.
+
+    A plain O(n^2) sweep: candidate counts here are a handful of itineraries
+    per query (K_CANDIDATES per Stage-1 agent, pooled and deduplicated), so
+    quadratic is not worth the complexity of a sweep-line algorithm. Ties
+    (equal on all four objectives) never dominate each other and are both
+    kept, which is the correct reading of "non-dominated".
+    """
+    objectives = _pareto_objectives(ranked)
+    return [
+        r for i, r in enumerate(ranked)
+        if not any(j != i and _dominates(objectives[j], objectives[i]) for j in range(len(ranked)))
+    ]

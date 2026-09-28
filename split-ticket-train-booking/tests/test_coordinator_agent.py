@@ -26,6 +26,7 @@ from src.agents.coordinator_agent import (
     CoordinatorAgent,
     combine_failure_reasons,
     dedupe_across_agents,
+    pareto_front,
     rank_candidates,
     same_train_query,
 )
@@ -488,4 +489,83 @@ def test_all_options_returned_not_just_winner(coordinator):
     assert scores == sorted(scores)
     assert all(isinstance(o, RankedItinerary) for o in r.ranked_options)
     assert r.best is r.ranked_options[0]
+
+
+# --------------------------------------------------------------------------- #
+# Pareto front: a VIEW over (fare, wall-clock, transfer penalty, seat risk),
+# alongside the weighted final_score ranking, not a replacement for it.
+# --------------------------------------------------------------------------- #
+def test_pareto_front_pure_function_excludes_a_strictly_dominated_entry():
+    """Direct test of the pure function: 'dear' is worse than 'cheap' on fare
+    and tied on everything else, so it does not belong on the front."""
+    when = dt.datetime(2026, 9, 16, 10, 0)
+    tk = (_ticket("X", "A", "B", "SL", when, when + dt.timedelta(minutes=100)),)
+    zero = TransferFeasibilityScore("A", True, (), 0.0)
+    cheap = RankedItinerary(_cand("A", 0, tk, 100.0, 0), zero,
+                            FareTimeScore("A", True, 100.0, 100.0, 100.0, 0.0), 0.0)
+    dear = RankedItinerary(_cand("A", 1, tk, 100.0, 0), zero,
+                           FareTimeScore("A", True, 200.0, 100.0, 100.0, 0.0), 0.0)
+    assert pareto_front([dear, cheap]) == [cheap]
+
+
+def test_pareto_optimal_flag_excludes_a_strictly_dominated_candidate():
+    """Through rank_candidates(): 'bad' is dearer AND has a higher transfer
+    penalty than 'good' with everything else equal, so it must not be
+    pareto_optimal even though both are still ranked and returned."""
+    when = dt.datetime(2026, 9, 16, 10, 0)
+    tk = (_ticket("X", "A", "B", "SL", when, when + dt.timedelta(minutes=100)),)
+    zero = TransferFeasibilityScore("A", True, (), 0.0)
+    worse_penalty = TransferFeasibilityScore("A", True, (), 20.0)
+    good, bad = _cand("A", 0, tk, 100.0, 0), _cand("A", 1, tk, 100.0, 0)
+    fare_good = FareTimeScore("A", True, 500.0, 100.0, 100.0, 0.0)
+    fare_bad = FareTimeScore("A", True, 600.0, 100.0, 100.0, 0.0)
+    ranked = rank_candidates([good, bad], [zero, worse_penalty], [fare_good, fare_bad])
+    by_candidate = {r.candidate: r for r in ranked}
+    assert by_candidate[good].pareto_optimal is True
+    assert by_candidate[bad].pareto_optimal is False
+
+
+@pytest.mark.parametrize("query", [SBC_MAS, PURI_CDG])
+def test_top_ranked_candidate_is_always_on_the_pareto_front(coordinator, query):
+    """The weighted final_score winner must never be a candidate the Pareto
+    view considers strictly dominated -- otherwise the "recommended" option
+    and the Pareto view would be actively contradicting each other."""
+    r = asyncio.run(coordinator.resolve(query))
+    assert r.found and r.best.pareto_optimal
+    assert r.best in r.pareto_front
+
+
+def test_thesis_dearer_confirmed_and_cheaper_waitlisted_are_both_on_the_front():
+    """The project's central finding: a split ticket costs MORE and buys a
+    CONFIRMED berth rather than a discount (see the root README's "What a
+    split ticket actually buys"). final_score alone collapses that trade-off
+    to one winner via W_WAITLIST; the Pareto front must keep BOTH the
+    cheaper-but-waitlisted and the dearer-but-confirmed option visible,
+    since neither dominates the other."""
+    when = dt.datetime(2026, 9, 16, 10, 0)
+    tk_confirmed = (_ticket("X", "A", "B", "SL", when, when + dt.timedelta(minutes=100), status="CONFIRMED"),)
+    tk_waitlisted = (_ticket("X", "A", "B", "SL", when, when + dt.timedelta(minutes=100), status="WAITLIST"),)
+    zero = TransferFeasibilityScore("A", True, (), 0.0)
+    cheap_waitlisted = _cand("A", 0, tk_waitlisted, 100.0, 0)
+    dear_confirmed = _cand("A", 1, tk_confirmed, 100.0, 0)
+    fare_cheap = FareTimeScore("A", True, 500.0, 100.0, 100.0, 0.0)
+    fare_dear = FareTimeScore("A", True, 700.0, 100.0, 100.0, 0.0)  # dearer than the risk penalty alone would justify
+    ranked = rank_candidates([cheap_waitlisted, dear_confirmed], [zero, zero], [fare_cheap, fare_dear])
+    by_candidate = {r.candidate: r for r in ranked}
+    assert by_candidate[cheap_waitlisted].pareto_optimal is True
+    assert by_candidate[dear_confirmed].pareto_optimal is True
+    # sanity: final_score alone WOULD still pick a single winner between them,
+    # which is exactly the trade-off the Pareto front keeps visible instead of hiding.
+    assert by_candidate[cheap_waitlisted].final_score != by_candidate[dear_confirmed].final_score
+
+
+def test_pareto_front_retains_ties():
+    """Two candidates equal on all four objectives dominate neither, so both stay."""
+    when = dt.datetime(2026, 9, 16, 10, 0)
+    tk = (_ticket("X", "A", "B", "SL", when, when + dt.timedelta(minutes=100)),)
+    zero = TransferFeasibilityScore("A", True, (), 0.0)
+    a, b = _cand("A", 0, tk, 100.0, 0), _cand("A", 1, tk, 100.0, 0)
+    score = FareTimeScore("A", True, 500.0, 100.0, 100.0, 0.0)
+    ranked = rank_candidates([a, b], [zero, zero], [score, score])
+    assert all(r.pareto_optimal for r in ranked)
 

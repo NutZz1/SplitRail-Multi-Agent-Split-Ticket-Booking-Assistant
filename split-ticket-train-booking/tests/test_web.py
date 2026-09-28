@@ -29,6 +29,8 @@ def test_real_results_are_serializable_and_include_transfer_details(web_system):
     assert split["comfort"]["per_transfer_penalties"]
     assert split["tickets"][0]["train_name"]
     assert "goal_state" not in split
+    assert all(isinstance(o["pareto_optimal"], bool) for o in result["options"])
+    assert result["options"][0]["pareto_optimal"] is True  # the top-ranked option is always on the front
 
 
 def test_hard_class_requirement_returns_no_results(web_system):
@@ -41,10 +43,29 @@ def test_hard_class_requirement_returns_no_results(web_system):
     {"origin": "INVALID"}, {"destination": "SBC"}, {"date": "2027-01-01"},
     {"travel_class": "INVALID"}, {"max_transfers": -1}, {"max_transfers": 3},
     {"max_transfers": True}, {"max_transfers": "2"},
+    {"seat_change_tolerance": "nope"}, {"seat_change_tolerance": "ANY"},
 ])
 def test_invalid_queries_are_rejected(web_system, change):
     with pytest.raises(ValueError):
         search(web_system, {**BASE, **change})
+
+
+@pytest.mark.parametrize("tolerance", ["any", "short_walk", "none"])
+def test_seat_change_tolerance_is_threaded_through(web_system, tolerance):
+    """Every valid tolerance value is accepted and reaches the search: a
+    real search constraint now, not a display filter applied afterwards."""
+    result = search(web_system, {**BASE, "seat_change_tolerance": tolerance})
+    json.dumps(result, default=str, allow_nan=False)
+
+
+def test_none_tolerance_never_returns_a_same_train_coach_switch(web_system):
+    result = search(web_system, {**BASE, "seat_change_tolerance": "none"})
+    for option in result["options"]:
+        trains = [t["train_number"] for t in option["tickets"]]
+        coaches = [t["coach"] for t in option["tickets"]]
+        for i in range(1, len(trains)):
+            if trains[i] == trains[i - 1]:
+                assert coaches[i] == coaches[i - 1]
 
 
 # --- direct-train endpoint -------------------------------------------------

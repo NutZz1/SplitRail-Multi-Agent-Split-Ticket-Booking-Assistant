@@ -162,9 +162,16 @@ def test_ask_reprompts_until_valid(monkeypatch, store):
 
 
 def test_prompt_query_builds_a_user_query(monkeypatch, store):
-    answers = iter(["SBC", "MAS", "2026-09-16", "3A", "y", "1", "2"])
+    answers = iter(["SBC", "MAS", "2026-09-16", "3A", "y", "1", "2", "none"])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
     monkeypatch.setattr("builtins.print", lambda *a, **k: None)
     q = cli.prompt_query(store)
-    assert q == UserQuery("SBC", "MAS", dt.date(2026, 9, 16), "3A", True, 1, 2)
+    assert q == UserQuery("SBC", "MAS", dt.date(2026, 9, 16), "3A", True, 1, 2, "none")
+
+
+def test_parse_seat_change_tolerance():
+    assert cli.parse_seat_change_tolerance("") == "any"
+    assert cli.parse_seat_change_tolerance(" Short_Walk ") == "short_walk"
+    with pytest.raises(cli.InputError):
+        cli.parse_seat_change_tolerance("nope")
 
