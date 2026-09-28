@@ -265,6 +265,14 @@ never touches your `railway.db` or `bookings.db`.
 
 See [data provenance and backend documentation](split-ticket-train-booking/README.md) for the real-versus-synthetic breakdown and search implementation.
 
+## docs/
+
+- [PEAS analysis](docs/peas.md) — performance measure, environment,
+  actuators, and sensors, derived from the implementation.
+- [Environment and agent analysis](docs/environment-analysis.md) — the
+  six-property environment classification, the agent type, and why the
+  architecture is multi-agent while the search stays centralised.
+
 ## What changed in this revision
 
 ### Fixed
