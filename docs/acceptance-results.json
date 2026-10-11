@@ -1,0 +1,107 @@
+{
+  "routes": [
+    {
+      "route": "KYJ \u2192 PGT",
+      "date": "2026-10-14",
+      "direct_services": 6,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.219
+    },
+    {
+      "route": "ALLP \u2192 PGT",
+      "date": "2026-10-14",
+      "direct_services": 3,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.201
+    },
+    {
+      "route": "TVC \u2192 CAN",
+      "date": "2026-10-14",
+      "direct_services": 3,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.261
+    }
+  ],
+  "busy_split": {
+    "query": {
+      "origin": "KYJ",
+      "destination": "PGT",
+      "date": "2026-10-14",
+      "travel_class": "SL",
+      "max_transfers": 1
+    },
+    "legs": [
+      {
+        "train_number": "12512",
+        "from_station": "KYJ",
+        "to_station": "AWY",
+        "coach": "S1",
+        "travel_class": "SL",
+        "boarding_datetime": "2026-10-14 07:12:00",
+        "alighting_datetime": "2026-10-14 10:35:00",
+        "status": "CONFIRMED",
+        "seat_numbers": [
+          1
+        ],
+        "train_run_date": "2026-10-14",
+        "train_name": "Rapti Sagar Expres",
+        "seats_remaining": 32,
+        "seats_total": 72,
+        "seat_details": [
+          {
+            "train_number": "12512",
+            "coach": "S1",
+            "number": 1,
+            "travel_class": "SL",
+            "berth_type": "LB",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "train_number": "12512",
+        "from_station": "AWY",
+        "to_station": "PGT",
+        "coach": "S1",
+        "travel_class": "SL",
+        "boarding_datetime": "2026-10-14 10:40:00",
+        "alighting_datetime": "2026-10-14 14:00:00",
+        "status": "CONFIRMED",
+        "seat_numbers": [
+          2
+        ],
+        "train_run_date": "2026-10-14",
+        "train_name": "Rapti Sagar Expres",
+        "seats_remaining": 40,
+        "seats_total": 72,
+        "seat_details": [
+          {
+            "train_number": "12512",
+            "coach": "S1",
+            "number": 2,
+            "travel_class": "SL",
+            "berth_type": "MB",
+            "position": 2
+          }
+        ]
+      }
+    ]
+  },
+  "reserved_allocations": 2,
+  "next_search_options": 71,
+  "duplicate_rejected": true,
+  "restart_persistence": true,
+  "cancellation_restores_seats": true
+}

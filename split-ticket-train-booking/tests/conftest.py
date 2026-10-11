@@ -36,6 +36,11 @@ _TEST_DB_DIR.mkdir(exist_ok=True)
 os.environ["SPLITRAIL_WINDOW_START"] = PINNED_WINDOW_START
 os.environ["SPLIT_TICKET_DB"] = str(_TEST_DB_DIR / "railway.db")
 os.environ["SPLIT_TICKET_BOOKINGS_DB"] = str(_TEST_DB_DIR / "bookings.db")
+# Existing academic comparisons pin their original deterministic seed. The
+# production busy profile and its migration have dedicated end-to-end tests.
+os.environ["SPLITRAIL_INVENTORY_PROFILE"] = 'standard-v1'
+os.environ['SPLITRAIL_REGION'] = 'ALL'
+os.environ['SPLITRAIL_NETWORK_PROFILE'] = 'legacy'
 
 from src.data_store import RailDataStore  # noqa: E402
 from src.demo_scenarios import ensure_database  # noqa: E402

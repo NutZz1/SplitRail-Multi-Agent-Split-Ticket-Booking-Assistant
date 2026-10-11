@@ -154,11 +154,15 @@ def validate_date(date: dt.date, store: RailDataStore) -> dt.date:
 
 
 def validate_station(code: str, store: RailDataStore) -> str:
+    from src import config
     code = code.strip().upper()
     if not code:
         raise InputError("Station code cannot be empty.")
-    if store.get_station(code) is None:
-        raise InputError(f"'{code}' is not a station code in railway.db (codes look like SBC, MAS, PURI).")
+    station = store.get_station(code)
+    if station is None:
+        raise InputError(f"'{code}' is not a station code in the local dataset (for example KYJ, PGT, ERS).")
+    if config.SEARCH_REGION != 'ALL' and (station.state or '').lower() != config.SEARCH_REGION.lower():
+        raise InputError('This version searches Kerala only. Choose a Kerala station.')
     return code
 
 

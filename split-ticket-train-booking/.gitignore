@@ -17,3 +17,8 @@ tests/.pytest-db/
 
 # Local secrets
 .env
+*.bak
+*.building-*
+*.db-journal
+*.db-wal
+*.db-shm

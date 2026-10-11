@@ -75,13 +75,13 @@ def format_option(index: int, option: RankedItinerary) -> str:
     tag += "  [PARETO-OPTIMAL]" if option.pareto_optimal else ""
     if option.degraded_agents:
         tag += f"  [DEGRADED: {', '.join(option.degraded_agents)} unavailable, confidence {option.confidence:.1f}]"
-    kind = {"SameTrainSearchAgent": "same-train", "DifferentTrainSearchAgent": "different-train"}.get(c.agent_name, c.agent_name)
+    kind = c.journey_type
     lines = [f"  #{index}  final_score {option.final_score:,.1f}   [{kind}]{tag}"]
     for i, tk in enumerate(c.tickets, 1):
         status = f", {tk.status}" if tk.status else ""
         lines.append(
             f"       leg {i}: train {tk.train_number}  {tk.from_station} -> {tk.to_station}  "
-            f"coach {tk.coach} ({tk.travel_class}{status})  "
+            f"coach {tk.coach} seats {','.join(map(str, tk.seat_numbers)) or 'unallocated'} ({tk.travel_class}{status})  "
             f"dep {tk.boarding_datetime:%a %d %b %H:%M}  arr {tk.alighting_datetime:%a %d %b %H:%M}"
         )
     fare = f"Rs {f.total_fare:,.2f}" if f.total_fare is not None else "unavailable (imputed for ranking)"
@@ -144,7 +144,7 @@ def format_recommendation(rec: FinalRecommendation, seconds: float) -> str:
 def format_demo_trains(store: RailDataStore) -> str:
     lo, hi = store.get_run_date_range() or ("?", "?")
     lines = [
-        "Trains with real seat-availability and run-date coverage (queries outside",
+        "Trains with simulated seat inventory and local run-date coverage (queries outside",
         f"this set correctly find nothing). The booking window covers {lo} to {hi}",
         f"({WINDOW_DAYS} days from today) and rolls forward daily.",
         "",

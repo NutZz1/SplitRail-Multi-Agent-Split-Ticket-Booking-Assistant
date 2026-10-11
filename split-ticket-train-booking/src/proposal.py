@@ -29,7 +29,8 @@ Leg = tuple[str, str, str]  # (train_number, from_station, to_station)
 
 def itinerary_signature(tickets: tuple[Ticket, ...]) -> tuple[Leg, ...]:
     """The legs of an itinerary, ignoring coach and class. See module docstring."""
-    return tuple((t.train_number, t.from_station, t.to_station) for t in tickets)
+    return tuple((t.train_number, t.from_station, t.to_station, t.train_run_date, t.travel_class, t.status)
+                 if t.train_run_date else (t.train_number, t.from_station, t.to_station) for t in tickets)
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,13 @@ class CandidateItinerary:
     tickets: tuple[Ticket, ...]
     total_time_minutes: float
     transfer_count: int
+
+    @property
+    def journey_type(self) -> str:
+        if len(self.tickets) == 1:
+            return 'DIRECT'
+        trains = {(t.train_number, t.train_run_date) for t in self.tickets}
+        return 'SAME_TRAIN_SEAT_CHANGE' if len(trains) == 1 else 'DIFFERENT_TRAIN_CHANGE'
 
     @property
     def signature(self) -> tuple[Leg, ...]:

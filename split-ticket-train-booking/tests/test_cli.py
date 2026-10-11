@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for cli.py: the scripted demo scenarios and the input validation,
 called as functions (no shelling out, no stdout parsing).
 """
@@ -31,15 +31,24 @@ def test_demo_has_four_scenarios():
 
 
 def test_demo_scenario_1_sbc_mas(system):
+    """12658 (Bangalore - Chennai Mail) still wins on merit: a direct ride on it
+    beats every alternative, same-train (a BNC coach switch) or different-train
+    (a transfer onto one of the other real Kerala/Tamil Nadu trains that also
+    touch SBC, BNC or MAS now that the full real network is loaded -- see
+    data_source/schedules_clean.json). The set of alternatives is no longer
+    fixed at exactly one BNC split, so this checks the BNC split is AMONG
+    them and still carries 12658's own moving time, not that it is the only
+    other option."""
     label, query, _ = cli.demo_labels()[0]
     rec, secs = cli.resolve_timed(system, query)
     assert rec.found
-    transfers = sorted(o.candidate.transfer_count for o in rec.ranked_options)
-    assert transfers == [0, 1]                                  # direct + BNC split
     assert rec.best.candidate.transfer_count == 0               # direct ranked first
     assert rec.best.candidate.agent_name == "SameTrainSearchAgent"
-    assert rec.ranked_options[1].candidate.split_stations == ("BNC",)
-    assert all(o.fare_time_score.moving_time_minutes == 340 for o in rec.ranked_options)
+    assert rec.best.fare_time_score.moving_time_minutes == 340
+    bnc_splits = [o for o in rec.ranked_options if o.candidate.split_stations == ("BNC",)]
+    assert bnc_splits, "expected 12658's own same-train BNC split among the ranked options"
+    assert all(o.candidate.agent_name == "SameTrainSearchAgent" for o in bnc_splits)
+    assert all(o.fare_time_score.moving_time_minutes == 340 for o in bnc_splits)
     print(f"\n{label}: {secs * 1000:.0f} ms")
 
 
@@ -48,7 +57,7 @@ def test_demo_scenario_2_puri_cdg(system):
     rec, secs = cli.resolve_timed(system, query)
     assert rec.found
     assert rec.best.candidate.agent_name == "DifferentTrainSearchAgent"
-    assert rec.best.candidate.signature == (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
+    assert tuple(leg[:3] for leg in rec.best.candidate.signature) == (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
     assert secs < 5.0
     print(f"\n{label}: {secs * 1000:.0f} ms")
 

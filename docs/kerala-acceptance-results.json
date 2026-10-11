@@ -1,0 +1,108 @@
+{
+  "routes": [
+    {
+      "route": "KYJ \u2192 PGT",
+      "date": "2026-10-09",
+      "direct_services": 16,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.709
+    },
+    {
+      "route": "ALLP \u2192 PGT",
+      "date": "2026-10-09",
+      "direct_services": 8,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.409
+    },
+    {
+      "route": "TVC \u2192 CAN",
+      "date": "2026-10-09",
+      "direct_services": 9,
+      "journey_types": [
+        "DIFFERENT_TRAIN_CHANGE",
+        "DIRECT",
+        "SAME_TRAIN_SEAT_CHANGE"
+      ],
+      "seconds": 0.843
+    }
+  ],
+  "busy_split": {
+    "query": {
+      "origin": "KYJ",
+      "destination": "PGT",
+      "date": "2026-10-09",
+      "travel_class": "SL",
+      "max_transfers": 1
+    },
+    "legs": [
+      {
+        "train_number": "12625",
+        "from_station": "KYJ",
+        "to_station": "KTYM",
+        "coach": "S1",
+        "travel_class": "SL",
+        "boarding_datetime": "2026-10-09 12:55:00",
+        "alighting_datetime": "2026-10-09 14:05:00",
+        "status": "CONFIRMED",
+        "seat_numbers": [
+          15
+        ],
+        "train_run_date": "2026-10-09",
+        "train_name": "Kerala Express",
+        "seats_remaining": 3,
+        "seats_total": 72,
+        "seat_details": [
+          {
+            "train_number": "12625",
+            "coach": "S1",
+            "number": 15,
+            "travel_class": "SL",
+            "berth_type": "SL",
+            "position": 15
+          }
+        ]
+      },
+      {
+        "train_number": "12625",
+        "from_station": "KTYM",
+        "to_station": "PGT",
+        "coach": "S1",
+        "travel_class": "SL",
+        "boarding_datetime": "2026-10-09 14:10:00",
+        "alighting_datetime": "2026-10-09 18:35:00",
+        "status": "CONFIRMED",
+        "seat_numbers": [
+          2
+        ],
+        "train_run_date": "2026-10-09",
+        "train_name": "Kerala Express",
+        "seats_remaining": 3,
+        "seats_total": 72,
+        "seat_details": [
+          {
+            "train_number": "12625",
+            "coach": "S1",
+            "number": 2,
+            "travel_class": "SL",
+            "berth_type": "MB",
+            "position": 2
+          }
+        ]
+      }
+    ]
+  },
+  "booking_reference": "SIM-DD7FBABCE27C",
+  "reserved_allocations": 2,
+  "next_search_options": 95,
+  "duplicate_rejected": true,
+  "restart_persistence": true,
+  "cancellation_restores_seats": true
+}

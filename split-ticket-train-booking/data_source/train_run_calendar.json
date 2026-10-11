@@ -63,5 +63,310 @@
    "FRI"
   ],
   "note": "Synthetic run-day assignment -- no free dataset publishes real day-of-week validity. Date range fixed to the project's demo window."
+ },
+ "12511": {
+  "name": "Rapti Sagar Express",
+  "runs_on": [
+   "TUE",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12512": {
+  "name": "Rapti Sagar Expres",
+  "runs_on": [
+   "TUE",
+   "WED",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12623": {
+  "name": "Chennai Tiruvananthapuram SF Mail",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12624": {
+  "name": "Tiruvananthapuram Chennai SF Mail",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12625": {
+  "name": "Kerala Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12626": {
+  "name": "Kerala Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12643": {
+  "name": "Swarna Jayanthi Express",
+  "runs_on": [
+   "TUE"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12695": {
+  "name": "Chennai-Trivandrum SuperFast Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "12696": {
+  "name": "Trivandrum-Chennai Superfast Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "13352": {
+  "name": "ALAPPUZHA - DHANBAD (Bokaro) Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16127": {
+  "name": "CHENNAI EGMORE - GURUVAYUR Exp",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16302": {
+  "name": "Venad Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16315": {
+  "name": "BANGALORE - KOCHUVELI Exp",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16316": {
+  "name": "KOCHUVELI - BANGALORE Exp",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16327": {
+  "name": "Korba Tiruvananthapuram Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16336": {
+  "name": "NAGERCOIL - GANDHIDHAM Weekly Exp",
+  "runs_on": [
+   "TUE"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16343": {
+  "name": "Amrita Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16344": {
+  "name": "Amrita Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16347": {
+  "name": "Trivandrum Mangalore Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16349": {
+  "name": "Trivandrum Nilambur Road Rajya Rani Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16381": {
+  "name": "Mumbai CST - Kanyakumari Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16382": {
+  "name": "Kanniyakumari-Mumbai CST Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16526": {
+  "name": "BANGALORE - KANNIYAKUMARI Island Exp",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16629": {
+  "name": "Malabar Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
+ },
+ "16650": {
+  "name": "Parasuram Express",
+  "runs_on": [
+   "MON",
+   "TUE",
+   "WED",
+   "THU",
+   "FRI",
+   "SAT",
+   "SUN"
+  ],
+  "note": "Real weekly running-day pattern, live from erail.in on 2026-09-30."
  }
 }

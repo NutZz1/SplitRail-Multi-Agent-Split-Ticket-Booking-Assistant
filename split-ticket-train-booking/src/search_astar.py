@@ -120,6 +120,10 @@ def astar_search_k(
     seen_signatures: set[Hashable] = set()
 
     while frontier:
+        from src.config import MAX_SEARCH_EXPANSIONS, SEARCH_SECONDS
+        if stats.nodes_expanded >= MAX_SEARCH_EXPANSIONS or time.perf_counter() - t0 >= SEARCH_SECONDS:
+            stats.truncated = True
+            break
         _, _, state = heapq.heappop(frontier)
         if state in finalized:
             continue
@@ -138,6 +142,7 @@ def astar_search_k(
             continue  # a goal is never expanded
 
         if goals and stats.nodes_expanded >= max_expansions:
+            stats.truncated = True
             break  # enough looking for extra candidates; the best one is safe
 
         stats.nodes_expanded += 1

@@ -301,16 +301,21 @@ def test_get_availability_from_matches_per_pair_queries(db):
 
 
 def test_get_trains_running_through_matches_filtered_query(db):
+    # SBC is now a real hub for several of the 31 bookable trains (see
+    # coach_compositions.json), not just the original 12609/12658 -- the
+    # invariant under test is that the two accessors AGREE, not a fixed list.
     fast = db.get_trains_running_through("SBC", "2026-09-16")
     slow = [t for t in db.get_all_trains_through_station("SBC") if db.runs_on_date(t, "2026-09-16")]
-    assert fast == slow == ["12609", "12658"]
+    assert fast == slow
+    assert {"12609", "12658"} <= set(fast)
     assert db.get_trains_running_through("SBC", "2026-09-26") == []
     assert db.get_trains_running_through("ZZZZZ", "2026-09-16") == []
 
 
 def test_demo_coverage_accessors(db):
     demo = db.get_demo_train_numbers()
-    assert demo == ["12217", "12609", "12658", "12801", "15017", "16525"]
+    assert demo == sorted(demo) and len(demo) == 31
+    assert {"12217", "12609", "12658", "12801", "15017", "16525"} <= set(demo)
     assert db.get_run_pattern("12217") == ["TUE", "FRI"]
     assert db.get_run_pattern("12658") == ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     assert db.get_run_pattern(NON_DEMO) == []

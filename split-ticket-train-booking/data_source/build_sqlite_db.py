@@ -41,6 +41,7 @@ import json
 import os
 import sqlite3
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -144,7 +145,31 @@ def _load(name: str):
         return json.load(f)
 
 
-def build(out_path: Path, start: dt.date | None = None) -> None:
+def build(out_path: Path, start: dt.date | None = None, *, operational_only: bool = False, network_profile: str | None = None) -> None:
+    """Build beside the target and atomically publish only a complete database.
+
+    Preserve a pre-rebuild backup once. The booking ledger is never touched.
+    ``operational_only`` builds from committed timetable extracts only.
+    """
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=out_path.name + '.building-', dir=out_path.parent)
+    os.close(fd)
+    target = Path(temporary)
+    try:
+        _build(target, start, operational_only=operational_only, network_profile=network_profile)
+        backup = out_path.with_suffix(out_path.suffix + '.pre-rebuild.bak')
+        if out_path.exists() and not backup.exists():
+            with sqlite3.connect(out_path.resolve().as_uri() + '?mode=ro', uri=True) as source:
+                with sqlite3.connect(backup) as copy:
+                    source.backup(copy)
+        os.replace(target, out_path)
+    finally:
+        if target.exists():
+            target.unlink()
+
+
+def _build(out_path: Path, start: dt.date | None = None, *, operational_only: bool = False, network_profile: str | None = None) -> None:
     """Write a fresh railway.db whose run dates cover the window beginning ``start``.
 
     ``start`` defaults to today (or ``SPLITRAIL_WINDOW_START`` when pinned).
@@ -154,6 +179,9 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
     (see :mod:`src.booking_store`).
     """
     start = start or window_start()
+    from src.config import NETWORK_PROFILE
+    network_profile = network_profile or NETWORK_PROFILE
+    regional = _load('kerala_simulation.json') if network_profile == 'kerala-v1' else None
     if out_path.exists():
         os.remove(out_path)
 
@@ -163,6 +191,10 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
 
     # --- stations ---------------------------------------------------------
     stations = _load("stations_clean.json")
+    if regional:
+        for code, state in _load("station_state_corrections.json")["states"].items():
+            if not stations[code].get("state"):
+                stations[code]["state"] = state
     cur.executemany(
         "INSERT INTO stations VALUES (?, ?, ?, ?, ?, ?)",
         (
@@ -202,8 +234,10 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
 
     # --- schedule_stops ---------------------------------------------------
     # A fresh clone includes the six demo timetables; the full data is optional.
-    schedules = (_load("schedules_clean.json") if (HERE / "schedules_clean.json").exists()
-                 else _load("demo_subset.json")["schedules"])
+    schedules = (_load("schedules_clean.json") if not operational_only and (HERE / "schedules_clean.json").exists()
+                 else _load("operational_subset.json")["schedules"])
+    if regional:
+        schedules.update(_load('kerala_subset.json')['schedules'])
 
     # `schedules` is bound as a default rather than captured: it is deleted
     # below to free ~65 MB, and a closure would leave this generator reading a
@@ -233,6 +267,8 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
 
     # --- coach_compositions -----------------------------------------------
     compositions = _load("coach_compositions.json")
+    if regional:
+        compositions.update({t: c for t, c in regional['coaches'].items() if t not in compositions})
     cur.executemany(
         "INSERT INTO coach_compositions VALUES (?, ?, ?, ?, ?)",
         (
@@ -270,6 +306,8 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
 
     # --- train_run_pattern / train_run_dates ------------------------------
     calendar = _load("train_run_calendar.json")
+    if regional:
+        calendar.update({t: c for t, c in regional['calendar'].items() if t not in calendar})
     cur.executemany(
         "INSERT INTO train_run_pattern VALUES (?, ?)",
         ((tn, dow) for tn, c in calendar.items() for dow in c["runs_on"]),
@@ -293,6 +331,7 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
             ("window_start", start.isoformat()),
             ("window_end", last.isoformat()),
             ("window_days", str(WINDOW_DAYS)),
+            ("network_profile", network_profile),
             ("built_at", dt.datetime.now().isoformat(timespec="seconds")),
         ],
     )
@@ -305,5 +344,9 @@ def build(out_path: Path, start: dt.date | None = None) -> None:
 
 
 if __name__ == "__main__":
-    target = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_OUT
-    build(target)
+    import argparse
+    parser = argparse.ArgumentParser(description="Build local reference data; preserves an existing database backup.")
+    parser.add_argument('output', nargs='?', type=Path, default=DEFAULT_OUT)
+    parser.add_argument('--operational-only', action='store_true', help='use the committed 31-train schedule extract')
+    args = parser.parse_args()
+    build(args.output.resolve(), operational_only=args.operational_only)

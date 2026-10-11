@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-08",
+  "startup_seconds": 1.924,
+  "samples_per_mode": 5,
+  "results": [
+    {
+      "route": "KYJ \u2192 PGT",
+      "sequential_seconds": 0.3211,
+      "pooled_seconds": 0.2942,
+      "speedup": 1.091,
+      "candidates": 108,
+      "equal_results": true
+    },
+    {
+      "route": "SBC \u2192 MAS",
+      "sequential_seconds": 0.0876,
+      "pooled_seconds": 0.0783,
+      "speedup": 1.12,
+      "candidates": 68,
+      "equal_results": true
+    }
+  ]
+}

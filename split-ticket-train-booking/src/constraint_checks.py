@@ -216,7 +216,7 @@ def close_final_ticket(state: JourneyState, query: UserQuery, store: RailDataSto
     destination) rather than only the segments closed by transfers. A
     not-yet-boarded state is returned unchanged.
     """
-    if not state.is_boarded:
+    if not state.is_boarded or state.tickets_closed:
         return state
     stops = store.get_real_halt_stops(state.current_train)  # type: ignore[arg-type]
     ticket = close_ticket(state, query, store, stops)

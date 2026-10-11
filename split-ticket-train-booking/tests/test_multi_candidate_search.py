@@ -1,4 +1,4 @@
-﻿"""
+"""
 k-candidate search on real data.
 
 The point of this step: because g(n) is moving time only, a same-train
@@ -39,23 +39,18 @@ def _print(p: ItineraryProposal) -> None:
 # --------------------------------------------------------------------------- #
 def test_sbc_mas_surfaces_direct_and_bnc_split(store, heuristic, mail_query):
     p = asyncio.run(SameTrainSearchAgent(store, heuristic).propose(mail_query))
-    _print(p)
-    assert p.found and K_CANDIDATES == 3
-    by_transfers = {c.transfer_count: c for c in p.candidates}
-    assert 0 in by_transfers and 1 in by_transfers, "expected both the direct ride and a split"
-    direct, split = by_transfers[0], by_transfers[1]
-    assert direct.total_time_minutes == split.total_time_minutes == 340   # the tie that motivated this step
-    assert direct.split_stations == () and split.split_stations == ("BNC",)
-    assert [t.train_number for t in split.tickets] == ["12658", "12658"]
-    assert direct.rank == 0                                                # cheapest first, then fewest moves
-    # BNC is the only halt >= 5 min on 12658, so exactly these two signatures exist
-    assert len(p.candidates) == 2
+    assert p.found
+    assert {c.transfer_count for c in p.candidates} == {0, 1}
+    assert all(c.total_time_minutes == 340 for c in p.candidates)
+    assert all(c.split_stations == ('BNC',) for c in p.candidates if c.transfer_count)
+    assert len({c.signature for c in p.candidates}) == len(p.candidates)
+    assert {c.tickets[0].travel_class for c in p.candidates if not c.transfer_count} == {'SL','3A','2A','1A'}
 
 
 def test_sbc_mas_candidates_via_process_pool(store, heuristic, pool, mail_query):
     # k crosses the process boundary
     p = asyncio.run(SameTrainSearchAgent(store, heuristic, pool=pool).propose(mail_query))
-    assert sorted(c.transfer_count for c in p.candidates) == [0, 1]
+    assert {c.transfer_count for c in p.candidates} == {0, 1}
 
 
 # --------------------------------------------------------------------------- #
@@ -65,26 +60,24 @@ def test_puri_cdg_connection_still_among_candidates(store, heuristic):
     q = UserQuery("PURI", "CDG", TUE, max_transfers=2)
     p = asyncio.run(DifferentTrainSearchAgent(store, heuristic).propose(q))
     _print(p)
-    assert p.found and K_DIFF == 3
+    assert p.found and K_DIFF == K_CANDIDATES
     wanted = (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
-    assert wanted in {c.signature for c in p.candidates}
-    assert p.best.signature == wanted
+    assert wanted in {tuple(leg[:3] for leg in c.signature) for c in p.candidates}
+    assert tuple(leg[:3] for leg in p.best.signature) == wanted
 
 
 # --------------------------------------------------------------------------- #
 # cap and distinctness
 # --------------------------------------------------------------------------- #
 def test_candidates_capped_at_k_when_more_exist(store, heuristic):
-    # 12801 PURI -> NDLS has 12 halts >= 5 min: direct + 12 single-split signatures = 13.
-    q = UserQuery("PURI", "NDLS", TUE, max_transfers=1)
-    all_goals, _ = astar_search_k(q, store, heuristic, k=50)
-    assert len(all_goals) == 13, [g.tickets_so_far[0].to_station for g in all_goals]
-    p = asyncio.run(SameTrainSearchAgent(store, heuristic).propose(q))
-    _print(p)
-    assert len(p.candidates) == K_CANDIDATES == 3
-    assert [c.rank for c in p.candidates] == [0, 1, 2]
-    # the K returned are the first K of the full list (cheapest, then discovery order)
-    assert [c.signature for c in p.candidates] == [itinerary_signature(g.tickets_so_far) for g in all_goals[:3]]
+    from src.seat_search import search_seats
+    q = UserQuery('PURI','NDLS',TUE,max_transfers=1)
+    small, _ = search_seats(q, store, heuristic, 'same_train', k=2)
+    large, _ = search_seats(q, store, heuristic, 'same_train', k=K_CANDIDATES)
+    assert len(large) > len(small)
+    assert sum(g.transfer_count > 0 for g in small) <= 2
+    # All direct classes are retained even when the split shortlist is capped.
+    assert {g.tickets_so_far[0].travel_class for g in small if not g.transfer_count} == {g.tickets_so_far[0].travel_class for g in large if not g.transfer_count}
 
 
 def test_candidates_are_distinct_by_signature_and_cost_ordered(store, heuristic):
@@ -173,10 +166,18 @@ def test_candidate_fields_and_attribution(store, heuristic, mail_query):
 
 
 def test_different_train_agent_also_returns_split_candidates_when_they_exist(store, heuristic, mail_query):
-    # The different-train generator never switches coach, so for SBC -> MAS it
-    # has exactly one signature: the direct ride. Only the same-train agent
-    # proposes the BNC split -- the two agents' candidate sets are complementary.
+    # The different-train generator never switches coach: every transfer in
+    # every candidate it returns must be onto a DIFFERENT train number, never
+    # the same train under a new coach (that's SameTrainSearchAgent's own,
+    # exclusive BNC-split job -- the two agents' candidate sets are
+    # complementary). With the full real network loaded
+    # (data_source/schedules_clean.json) SBC -> MAS now has genuine
+    # different-train candidates too, so this no longer asserts there is
+    # only the direct ride.
     p = asyncio.run(DifferentTrainSearchAgent(store, heuristic).propose(mail_query))
-    assert [c.transfer_count for c in p.candidates] == [0]
+    assert p.candidates
+    for c in p.candidates:
+        trains = [t.train_number for t in c.tickets]
+        assert all(a != b for a, b in zip(trains, trains[1:])), f"same train on consecutive legs (a coach switch): {trains}"
 
 

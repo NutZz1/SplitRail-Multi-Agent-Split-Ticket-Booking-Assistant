@@ -1,27 +1,9 @@
-"""
-The rolling booking window.
+"""Ten-day simulated booking window, checked at application startup.
 
-Real Indian Railways reservation opens a fixed number of days ahead (60 at
-the time of writing) and moves forward every day: the window is always
-"today .. today + N", never a range frozen in the past. This project used a
-hard-coded 2026-09-10 .. 2026-09-25 window baked into
-``train_run_calendar.json``, which meant every search started failing the
-day that window ran out.
-
-Here the window is computed instead of stored. ``railway.db`` is rebuilt
-whenever its recorded ``window_start`` is no longer today, so run dates
-always cover ``today .. today + WINDOW_DAYS - 1``.
-
-``WINDOW_DAYS`` is 10 rather than the real 60 because seat availability is
-synthetic and generated per running date: ten days is enough to demonstrate
-a rolling window, a per-date booking ledger, and "booked on day 3, days
-4-10 unaffected", without a sixfold data set.
-
-Pinning the window
-------------------
-``SPLITRAIL_WINDOW_START=YYYY-MM-DD`` overrides "today". The test suite sets
-it so its assertions can name concrete dates, and a demo can use it to get a
-reproducible window. Nothing else should set it.
+SPLITRAIL_WINDOW_START=YYYY-MM-DD pins a reproducible demonstration window.
+Otherwise it starts on today's local date. Weekday patterns are the local
+simulation calendar, not a claim about current Indian Railways operations.
+Reference data may be rebuilt when the window moves; bookings are separate.
 """
 
 from __future__ import annotations
@@ -74,7 +56,7 @@ def running_dates(runs_on: list[str], start: dt.date | None = None,
                   days: int = WINDOW_DAYS) -> list[str]:
     """The dates in the window on which a train with this weekday pattern runs.
 
-    ``runs_on`` is the train's real day-of-week pattern (``["MON", "WED"]``);
+    ``runs_on`` is the train's local day-of-week pattern (``["MON", "WED"]``);
     this expands it onto the current window. A train running daily yields
     every date in the window, one running Tue/Fri yields two or three.
     """

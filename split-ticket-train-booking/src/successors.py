@@ -52,6 +52,7 @@ Different-train transfers are deliberately not implemented yet.
 from __future__ import annotations
 
 import logging
+from src.config import MIN_SEAT_CHANGE, MAX_SHORT_WALK
 from dataclasses import replace
 
 from src.data_store import RailDataStore
@@ -61,7 +62,7 @@ from src.state import JourneyState, UserQuery
 logger = logging.getLogger(__name__)
 
 #: Minimum scheduled halt (minutes) for a passenger to change coach on the same train.
-MIN_COACH_SWITCH_MINUTES: float = 5.0
+MIN_COACH_SWITCH_MINUTES: float = MIN_SEAT_CHANGE
 
 #: Coach-position cap for ``UserQuery.seat_change_tolerance == "short_walk"``:
 #: a switch further than this is excluded outright rather than merely
@@ -71,7 +72,7 @@ MIN_COACH_SWITCH_MINUTES: float = 5.0
 #: different-train transfer penalty (20) and the night-transfer penalty (30)
 #: -- i.e. a "short walk" is deliberately capped at less than what it costs
 #: to change trains entirely, not at some fraction of the rake's length.
-MAX_SHORT_WALK_COACH_POSITIONS: int = 4
+MAX_SHORT_WALK_COACH_POSITIONS: int = MAX_SHORT_WALK
 
 # Shared constraint checks and helpers live in src.constraint_checks; they are
 # re-exported here so existing imports (tests, agents, searches) keep working.

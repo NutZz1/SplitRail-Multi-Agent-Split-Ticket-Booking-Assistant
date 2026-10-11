@@ -5,7 +5,7 @@ real halt with enough connection time (a "different-train split ticket").
 Same shape and concurrency model as :class:`SameTrainSearchAgent` -- A* in
 a worker thread via ``asyncio.to_thread`` with a per-thread
 ``RailDataStore.clone()`` -- but the search is driven by
-:func:`src.successors_different_train.get_successors_different_train`.
+:func:`src.seat_search.search_seats` in different-train mode.
 """
 
 from __future__ import annotations
@@ -15,19 +15,19 @@ import asyncio
 from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.proposal import ItineraryProposal
-from src.search_astar import astar_search_k
+from src.seat_search import search_seats, operates_on_boarding_date, search_limit_reason
+from src.config import SEAT_CANDIDATES
 from src.agents.worker_pool import SearchWorkerPool
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
 from src.successors_different_train import (
     MIN_DIFFERENT_TRAIN_BUFFER_MINUTES,
-    get_successors_different_train,
 )
 
 
 #: How many distinct candidate itineraries propose() returns (cheapest first).
 #: Distinctness is by leg signature (train + split stations), see src.proposal.
-K_CANDIDATES: int = 3
+K_CANDIDATES: int = SEAT_CANDIDATES
 
 
 class DifferentTrainSearchAgent:
@@ -60,7 +60,7 @@ class DifferentTrainSearchAgent:
     # -- worker-thread bodies (each opens its own DB connection) -------------
     def _search(self, query: UserQuery) -> tuple[list[JourneyState], SearchStats]:
         with self._store.clone() as store:
-            return astar_search_k(query, store, self._heuristic, k=K_CANDIDATES, successors_fn=get_successors_different_train)
+            return search_seats(query, store, self._heuristic, "different_train", k=K_CANDIDATES)
 
     def _diagnose(self, query: UserQuery, stats: SearchStats) -> str:
         with self._store.clone() as store:
@@ -76,6 +76,10 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
     simply because no running train that reaches the destination shares a
     halt with the boarded train(s).
     """
+    if reason := search_limit_reason(query, store, stats):
+        return reason
+    if query.max_transfers == 0:
+        return "No connecting journey is permitted with max_transfers=0."
     origin, dest, date = query.origin_station, query.destination_station, query.travel_date.isoformat()
 
     halting = [
@@ -85,7 +89,7 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
     if not halting:
         return f"No train has a real halt at {origin}."
 
-    running = [tn for tn in halting if store.runs_on_date(tn, date)]
+    running = [tn for tn in halting if operates_on_boarding_date(store, tn, origin, query.travel_date)]
     if not running:
         return explain_no_running_train(halting, origin, query, store)
 

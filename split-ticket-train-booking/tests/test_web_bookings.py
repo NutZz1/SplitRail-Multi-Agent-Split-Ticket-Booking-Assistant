@@ -70,9 +70,9 @@ def _seats(system, coach, date=WED):
 def test_create_read_update_cancel(web_system):
     created = create_booking(web_system, {
         "train_number": MAIL, "run_date": WED, "from_station": "SBC",
-        "to_station": "MAS", "coach_code": "B1", "passenger_count": 2,
+        "to_station": "MAS", "coach_code": "S1", "passenger_count": 2,
         "passenger_name": "A Patel"})["booking"]
-    assert created["status"] == "ACTIVE" and created["travel_class"] == "3A"
+    assert created["status"] == "ACTIVE" and created["travel_class"] == "SL"
 
     listed = list_bookings(web_system, {})["bookings"]
     assert [b["id"] for b in listed] == [created["id"]]
@@ -100,7 +100,7 @@ def test_cancelling_an_unknown_booking_is_a_key_error(web_system):
 ])
 def test_invalid_bookings_are_rejected(web_system, patch, message):
     body = {"train_number": MAIL, "run_date": WED, "from_station": "SBC",
-            "to_station": "MAS", "coach_code": "B1", "passenger_count": 1, **patch}
+            "to_station": "MAS", "coach_code": "S1", "passenger_count": 1, **patch}
     with pytest.raises(BookingError, match=message):
         create_booking(web_system, body)
 
@@ -108,7 +108,7 @@ def test_invalid_bookings_are_rejected(web_system, patch, message):
 @pytest.mark.parametrize("count", [0, -1, 999, "two", None])
 def test_passenger_count_is_validated_at_the_boundary(web_system, count):
     body = {"train_number": MAIL, "run_date": WED, "from_station": "SBC",
-            "to_station": "MAS", "coach_code": "B1", "passenger_count": count}
+            "to_station": "MAS", "coach_code": "S1", "passenger_count": count}
     with pytest.raises(ValueError):
         create_booking(web_system, body)
 
@@ -142,32 +142,33 @@ def test_itinerary_shape_is_validated(web_system, legs):
 # Per-date isolation, as the interface shows it
 # --------------------------------------------------------------------------- #
 def test_booking_moves_the_berth_count_on_that_date_only(web_system):
-    before_wed, before_thu = _seats(web_system, "B1"), _seats(web_system, "B1", THU)
+    before_wed, before_thu = _seats(web_system, "S1"), _seats(web_system, "S1", THU)
     create_booking(web_system, {"train_number": MAIL, "run_date": WED, "from_station": "SBC",
-                                "to_station": "MAS", "coach_code": "B1", "passenger_count": 3})
-    assert _seats(web_system, "B1") == before_wed - 3
-    assert _seats(web_system, "B1", THU) == before_thu
+                                "to_station": "MAS", "coach_code": "S1", "passenger_count": 3})
+    assert _seats(web_system, "S1") == before_wed - 3
+    assert _seats(web_system, "S1", THU) == before_thu
 
 
 def test_search_reports_berths_and_reflects_a_booking(web_system):
     option = search(web_system, SEARCH_WED)["options"][0]
     ticket = option["tickets"][0]
-    assert ticket["seats_remaining"] == ticket["seats_total"]
+    assert 5 <= ticket["seats_remaining"] <= ticket["seats_total"]
+    other_before = _seats(web_system, ticket["coach"], THU)
 
     create_booking(web_system, {"train_number": ticket["train_number"], "run_date": WED,
                                 "from_station": ticket["from_station"], "to_station": ticket["to_station"],
                                 "coach_code": ticket["coach"], "passenger_count": 5})
 
     after = search(web_system, SEARCH_WED)["options"][0]["tickets"][0]
-    assert after["seats_remaining"] == ticket["seats_total"] - 5
+    assert after["seats_remaining"] == ticket["seats_remaining"] - 5
     other_day = search(web_system, {**SEARCH_WED, "date": THU})["options"][0]["tickets"][0]
-    assert other_day["seats_remaining"] == other_day["seats_total"]
+    assert other_day["seats_remaining"] == other_before
 
 
 def test_booking_out_a_coach_changes_the_ranked_options(web_system):
     """The search must route around a full coach -- and only on that date."""
     leg = _leg(web_system)
-    total = search(web_system, SEARCH_WED)["options"][0]["tickets"][0]["seats_total"]
+    total = search(web_system, SEARCH_WED)["options"][0]["tickets"][0]["seats_remaining"]
     create_booking(web_system, {"train_number": leg["train_number"], "run_date": WED,
                                 "from_station": leg["from_station"], "to_station": leg["to_station"],
                                 "coach_code": leg["coach"], "passenger_count": total})

@@ -1,47 +1,24 @@
-"""
-Bookings: the read-write half of the data layer.
+"""Persistent, segment-aware simulated reservations.
 
-``railway.db`` is reference data -- timetables, coach layouts, and the
-synthetic *baseline* seat availability. It is opened ``mode=ro&immutable=1``
-and is rebuilt from scratch whenever the booking window rolls forward, so
-nothing that must survive can live in it.
+Reference timetables stay in railway.db; the versioned deterministic seed in
+inventory.py plus ACTIVE rows in bookings.db define physical-seat occupancy.
+Seats are keyed by train, origin run date, coach and number; occupied spans
+are half-open intervals of real halt indices. Adjacent spans may reuse seats.
 
-Bookings therefore get their own file, ``bookings.db``, with a read-write
-connection and full CRUD:
-
-    create  -- reserve N berths in one coach on one train, on ONE run date
-    read    -- get() / list(), by id, train, date, or coach
-    update  -- change the passenger count, name, or coach of a booking
-    delete  -- cancel() (soft, keeps the audit row) or delete() (hard)
-
-Why bookings are per run date
------------------------------
-The baseline availability table has no date column: it describes a
-*typical* run of a train. A reservation is not typical -- it is one berth on
-one train on one date. Keying bookings by ``run_date`` is what makes the
-rolling window behave the way a real system does: booking out a coach on
-day 3 changes day 3 only, and days 4-10 are untouched. The search
-algorithms (BFS, UCS, A*) all read availability through
-:meth:`~src.data_store.RailDataStore.get_availability_from`, so once that
-call is given a date, every algorithm sees bookings without any change to
-its own logic.
-
-Occupancy arithmetic
---------------------
-A berth booked PURI -> NDLS is occupied for every segment in between, so a
-booking blocks a queried segment when the two *overlap* on the train's stop
-order, not only when they are identical. Half-open intervals:
-``[a, b)`` overlaps ``[c, d)`` iff ``a < d and c < b``.
-
-Capacity comes from ``berth_layout_rules`` (real, published coach specs),
-so an SL coach holds 72 and a 1A coach 18. Effective status is the baseline
-status degraded by how full the coach is -- see :func:`effective_status`.
+BookingService rechecks the timetable, seats and server-calculated fare under
+BEGIN IMMEDIATE. Every leg of an itinerary commits together or rolls back.
+Cancellation retains history and removes the ACTIVE occupancy overlay.
+Legacy count-only rows are preserved and conservatively consume capacity;
+their historical physical seat identity remains unknown.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import os
+import json
+import logging
+from contextlib import contextmanager
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -130,6 +107,15 @@ class Booking:
     status: str
     created_at: str
     updated_at: str
+    seat_numbers_json: str = "[]"
+    journey_id: str | None = None
+    fare: float | None = None
+    departure: str | None = None
+    arrival: str | None = None
+
+    @property
+    def seat_numbers(self) -> tuple[int, ...]:
+        return tuple(json.loads(self.seat_numbers_json))
 
     @property
     def is_active(self) -> bool:
@@ -191,6 +177,7 @@ class BookingStore:
     def __init__(self, path: Union[str, Path, None] = None, *, read_only: bool = False) -> None:
         self.path: Path = Path(path) if path is not None else default_bookings_path()
         self.read_only = read_only
+        self._transaction_depth = 0
         # check_same_thread=False for the same reason as RailDataStore: a
         # threaded server serves from worker threads. Access is serialised by
         # the caller (web.py's ENGINE_LOCK), not by sqlite3.
@@ -203,8 +190,78 @@ class BookingStore:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(self.path, check_same_thread=False)
             self._conn.executescript(SCHEMA)
+            columns = {r[1] for r in self._conn.execute("PRAGMA table_info(bookings)")}
+            if 'seat_numbers_json' not in columns and self._conn.execute('SELECT COUNT(*) FROM bookings').fetchone()[0]:
+                backup = self.path.with_suffix(self.path.suffix + '.pre-seats.bak')
+                if not backup.exists():
+                    self._conn.commit()
+                    with sqlite3.connect(backup) as copy:
+                        self._conn.backup(copy)
+            for name, declaration in {"seat_numbers_json": "TEXT NOT NULL DEFAULT '[]'", "journey_id": "TEXT",
+                                      "fare": "REAL", "departure": "TEXT", "arrival": "TEXT"}.items():
+                if name not in columns:
+                    self._conn.execute(f"ALTER TABLE bookings ADD COLUMN {name} {declaration}")
+            self._conn.execute("PRAGMA busy_timeout=10000")
+            from src.config import INVENTORY_VERSION, DEFAULT_INVENTORY_PROFILE
+            self._conn.execute('CREATE TABLE IF NOT EXISTS simulation_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+            version = self._conn.execute("SELECT value FROM simulation_meta WHERE key='inventory_version'").fetchone()
+            if version and version[0] not in ('segment-v1', INVENTORY_VERSION):
+                raise BookingError('Inventory version changed; an explicit ledger migration is required.')
+            self._conn.commit()
+            if version and version[0] == 'segment-v1':
+                backup = self.path.with_suffix(self.path.suffix + '.pre-busy.bak')
+                if not backup.exists():
+                    with sqlite3.connect(backup) as copy:
+                        self._conn.backup(copy)
+            with self.transaction():
+                self._conn.execute('CREATE TABLE IF NOT EXISTS inventory_run_profiles '
+                                   '(train_number TEXT NOT NULL, run_date TEXT NOT NULL, profile TEXT NOT NULL, '
+                                   'PRIMARY KEY (train_number, run_date))')
+                if version and version[0] == 'segment-v1':
+                    # Preserve the exact original seed for every historically
+                    # booked run, including cancelled bookings and later reuse.
+                    self._conn.execute("INSERT OR IGNORE INTO inventory_run_profiles "
+                                       "SELECT DISTINCT train_number, run_date, 'standard-v1' FROM bookings")
+                self._conn.execute("INSERT OR IGNORE INTO simulation_meta VALUES ('default_inventory_profile', ?)",
+                                   (DEFAULT_INVENTORY_PROFILE,))
+                self._conn.execute("INSERT OR REPLACE INTO simulation_meta VALUES ('inventory_version', ?)", (INVENTORY_VERSION,))
             self._conn.commit()
         self._conn.row_factory = sqlite3.Row
+
+    def inventory_profile(self, train_number, run_date):
+        """The persisted seed policy; migration keeps existing booked runs intact."""
+        # Old read-only connections can exist briefly before startup migration.
+        tables = {r[0] for r in self._conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if 'inventory_run_profiles' not in tables:
+            return 'standard-v1'
+        row = self._conn.execute('SELECT profile FROM inventory_run_profiles WHERE train_number=? AND run_date=?',
+                                 (train_number, str(run_date))).fetchone()
+        if row:
+            return row[0]
+        row = self._conn.execute("SELECT value FROM simulation_meta WHERE key='default_inventory_profile'").fetchone()
+        return row[0] if row else 'standard-v1'
+
+    @contextmanager
+    def transaction(self):
+        """Serialize check-and-allocate across connections, with true rollback."""
+        outer = self._transaction_depth == 0
+        if outer:
+            self._conn.execute("BEGIN IMMEDIATE")
+        self._transaction_depth += 1
+        try:
+            yield
+            if outer:
+                self._conn.commit()
+        except BaseException:
+            if outer:
+                self._conn.rollback()
+            raise
+        finally:
+            self._transaction_depth -= 1
+
+    def _commit(self):
+        if not self._transaction_depth:
+            self._conn.commit()
 
     # -- lifecycle ----------------------------------------------------------
     def clone(self, *, read_only: bool | None = None) -> "BookingStore":
@@ -240,6 +297,11 @@ class BookingStore:
         passenger_count: int = 1,
         passenger_name: str | None = None,
         booking_id: str | None = None,
+        seat_numbers: tuple[int, ...] = (),
+        journey_id: str | None = None,
+        fare: float | None = None,
+        departure: str | None = None,
+        arrival: str | None = None,
     ) -> Booking:
         """Insert one reservation and return it. Validation belongs to
         :class:`BookingService`; this method only enforces the table's own rules."""
@@ -275,8 +337,11 @@ class BookingStore:
              row.from_order, row.to_order, row.coach_code, row.travel_class,
              row.passenger_count, row.passenger_name, row.status, row.created_at, row.updated_at),
         )
-        self._conn.commit()
-        return row
+        self._conn.execute(
+            "UPDATE bookings SET seat_numbers_json=?, journey_id=?, fare=?, departure=?, arrival=? WHERE id=?",
+            (json.dumps(seat_numbers), journey_id, fare, departure, arrival, row.id))
+        self._commit()
+        return self.get(row.id)
 
     # -- READ ---------------------------------------------------------------
     def get(self, booking_id: str) -> Optional[Booking]:
@@ -349,7 +414,7 @@ class BookingStore:
         self._conn.execute(
             f"UPDATE bookings SET {assignments} WHERE id = ?", [*changes.values(), booking_id]
         )
-        self._conn.commit()
+        self._commit()
         updated = self.get(booking_id)
         assert updated is not None
         return updated
@@ -362,13 +427,13 @@ class BookingStore:
     def delete(self, booking_id: str) -> bool:
         """Hard delete. Returns False if there was nothing to delete."""
         cursor = self._conn.execute("DELETE FROM bookings WHERE id = ?", (booking_id,))
-        self._conn.commit()
+        self._commit()
         return cursor.rowcount > 0
 
     def clear(self) -> int:
         """Delete every booking. For demo resets and test teardown."""
         cursor = self._conn.execute("DELETE FROM bookings")
-        self._conn.commit()
+        self._commit()
         return cursor.rowcount
 
 
@@ -395,89 +460,130 @@ class BookingService:
         self._store = store
         self._bookings = bookings
 
-    # -- the write path -----------------------------------------------------
-    def book(
-        self,
-        train_number: str,
-        run_date: str,
-        from_station: str,
-        to_station: str,
-        coach_code: str,
-        passenger_count: int = 1,
-        passenger_name: str | None = None,
-    ) -> Booking:
-        train_number, coach_code = train_number.strip(), coach_code.strip().upper()
+    def book(self, train_number: str, run_date: str, from_station: str, to_station: str,
+             coach_code: str, passenger_count: int = 1, passenger_name: str | None = None,
+             seat_numbers=None, journey_id=None) -> Booking:
+        from src.inventory import InventoryService
+        from src.constraint_checks import stop_datetime
+        from src.state import Ticket
+        from src.fare_model import compute_fare
+        train_number, coach_code = str(train_number).strip(), str(coach_code).strip().upper()
         from_station, to_station = from_station.strip().upper(), to_station.strip().upper()
-        if passenger_count < 1:
-            raise BookingError("A booking needs at least one passenger.")
-
+        if type(passenger_count) is not int or not 1 <= passenger_count <= 200:
+            raise BookingError("A booking needs between 1 and 200 passengers.")
+        if seat_numbers is not None and (not isinstance(seat_numbers, (list, tuple))
+                                        or any(type(n) is not int for n in seat_numbers)):
+            raise BookingError("Seat numbers must be a list of integers.")
         self._check_runs(train_number, run_date)
-        from_order, to_order = self._stop_orders(train_number, from_station, to_station)
-
+        a, b = self._stop_orders(train_number, from_station, to_station)
         composition = self._store.get_coach_composition(train_number)
-        if composition and coach_code not in composition:
-            raise BookingError(
-                f"Coach {coach_code} is not in train {train_number}'s rake "
-                f"({', '.join(composition)})."
-            )
+        if coach_code not in composition or not self._store.coach_travel_class(coach_code):
+            raise BookingError(f"Coach {coach_code} is not in train {train_number}'s reservable rake.")
+        stops = {s.station_code: s for s in self._store.get_real_halt_stops(train_number)}
+        date = dt.date.fromisoformat(run_date)
+        departure = stop_datetime(stops[from_station], date, use_arrival=False)
+        arrival = stop_datetime(stops[to_station], date, use_arrival=True)
+        window = self._store.get_window()
+        if departure is None or arrival is None or arrival <= departure:
+            raise BookingError("Timetable data unavailable for this segment.")
+        from src.rail_graph import segment_minutes
+        route = [s for s in stops.values() if a <= s.stop_order <= b]
+        if any((segment_minutes(left, right) or 0) <= 0 for left, right in zip(route, route[1:])):
+            raise BookingError("Timetable data is inconsistent along this segment.")
+        if window and not window[0] <= departure.date().isoformat() <= window[1]:
+            # Later connection legs are allowed within the configured journey
+            # horizon; book_itinerary validates the first boarding date.
+            from src.config import MAX_JOURNEY_DAYS
+            if journey_id is None or not window[0] <= departure.date().isoformat() <= (
+                    dt.date.fromisoformat(window[1]) + dt.timedelta(days=MAX_JOURNEY_DAYS)).isoformat():
+                raise BookingError("Boarding date is outside the booking window.")
+        with self._bookings.transaction():
+            inventory = InventoryService(self._store, self._bookings)
+            free = inventory.available(train_number, run_date, from_station, to_station, coach_code)
+            selected = tuple(free[:passenger_count]) if seat_numbers is None else tuple(seat_numbers)
+            if (len(selected) != passenger_count or len(set(selected)) != len(selected)
+                    or any(type(n) is not int for n in selected)):
+                raise BookingError(f"Only {len(free)} berth(s) left; supply one distinct valid seat per passenger.")
+            valid = {s.number for s in inventory.seats(train_number, coach_code)}
+            if any(n not in valid for n in selected):
+                raise BookingError("Invalid seat number for this coach.")
+            if any(n not in free for n in selected):
+                raise BookingError("Seat became unavailable on an overlapping segment. Search again.")
+            ticket = Ticket(train_number, from_station, to_station, coach_code,
+                            self._store.coach_travel_class(coach_code), departure, arrival,
+                            'CONFIRMED', selected, run_date)
+            fare = compute_fare(ticket, self._store, passenger_count)
+            if fare is None:
+                raise BookingError("Fare data unavailable for this segment.")
+            booking = self._bookings.create(
+                train_number=train_number, run_date=run_date, from_station=from_station, to_station=to_station,
+                from_order=a, to_order=b, coach_code=coach_code, travel_class=ticket.travel_class,
+                passenger_count=passenger_count, passenger_name=passenger_name,
+                seat_numbers=selected, journey_id=journey_id,
+                fare=fare,
+                departure=departure.isoformat(), arrival=arrival.isoformat())
+        if journey_id is None:
+            logging.getLogger(__name__).info("booking_success train=%s legs=1 passengers=%d", train_number, passenger_count)
+        return booking
 
-        baseline = self._store.get_availability(train_number, from_station, to_station)
-        if coach_code not in baseline:
-            raise BookingError(
-                f"Train {train_number} has no availability data for {from_station} -> "
-                f"{to_station} in coach {coach_code}."
-            )
-
-        remaining = self.seats_remaining(train_number, run_date, from_station, to_station, coach_code)
-        if passenger_count > remaining:
-            raise BookingError(
-                f"Only {remaining} berth(s) left in coach {coach_code} on {train_number} "
-                f"{from_station} -> {to_station} on {run_date}; {passenger_count} requested."
-            )
-
-        return self._bookings.create(
-            train_number=train_number,
-            run_date=run_date,
-            from_station=from_station,
-            to_station=to_station,
-            from_order=from_order,
-            to_order=to_order,
-            coach_code=coach_code,
-            travel_class=self._store.coach_travel_class(coach_code),
-            passenger_count=passenger_count,
-            passenger_name=passenger_name,
-        )
+    def book_itinerary(self, legs, *, passenger_count=1, passenger_name=None):
+        from src.config import MIN_SEAT_CHANGE, MIN_TRAIN_CHANGE, MAX_JOURNEY_DAYS
+        if not isinstance(legs, list) or not 1 <= len(legs) <= 3 or any(not isinstance(leg, dict) for leg in legs):
+            raise BookingError("An itinerary needs between one and three structured legs.")
+        journey_id = 'SIM-' + uuid.uuid4().hex[:12].upper()
+        made = []
+        with self._bookings.transaction():
+            for leg in legs:
+                booking = self.book(str(leg.get('train_number', '')), str(leg.get('train_run_date', leg.get('run_date', ''))),
+                                    str(leg.get('from_station', '')), str(leg.get('to_station', '')),
+                                    str(leg.get('coach', leg.get('coach_code', ''))),
+                                    passenger_count, passenger_name, leg.get('seat_numbers'), journey_id)
+                if not made:
+                    window = self._store.get_window()
+                    if window and not window[0] <= booking.departure[:10] <= window[1]:
+                        raise BookingError("Boarding date is outside the booking window.")
+                else:
+                    previous = made[-1]
+                    if previous.to_station != booking.from_station:
+                        raise BookingError("Itinerary legs do not connect at the same station.")
+                    same = (previous.train_number, previous.run_date) == (booking.train_number, booking.run_date)
+                    buffer = (dt.datetime.fromisoformat(booking.departure) - dt.datetime.fromisoformat(previous.arrival)).total_seconds()/60
+                    if buffer < (MIN_SEAT_CHANGE if same else MIN_TRAIN_CHANGE):
+                        raise BookingError("Insufficient time for the requested transfer.")
+                    if same and previous.coach_code == booking.coach_code and previous.seat_numbers == booking.seat_numbers:
+                        raise BookingError("A seat-change itinerary must change seats.")
+                if (dt.datetime.fromisoformat(booking.arrival) - dt.datetime.fromisoformat(made[0].departure if made else booking.departure)).days > MAX_JOURNEY_DAYS:
+                    raise BookingError("Journey exceeds the supported duration.")
+                made.append(booking)
+        logging.getLogger(__name__).info("booking_success legs=%d passengers=%d", len(made), passenger_count)
+        return made
 
     def rebook(self, booking_id: str, *, passenger_count: int | None = None, **fields) -> Booking:
-        """Update a booking, re-checking capacity when the passenger count grows."""
-        current = self._bookings.get(booking_id)
-        if current is None:
-            raise BookingError(f"No booking with id {booking_id!r}.")
-        if passenger_count is not None and passenger_count > current.passenger_count:
-            extra = passenger_count - current.passenger_count
-            remaining = self.seats_remaining(
-                current.train_number, current.run_date,
-                current.from_station, current.to_station, current.coach_code,
-            )
-            if extra > remaining:
-                raise BookingError(
-                    f"Only {remaining} more berth(s) available in coach {current.coach_code}; "
-                    f"{extra} more requested."
-                )
-        return self._bookings.update(booking_id, passenger_count=passenger_count, **fields)
+        with self._bookings.transaction():
+            current = self._bookings.get(booking_id)
+            if current is None:
+                raise BookingError(f"No booking with id {booking_id!r}.")
+            if fields.get('status') == 'CANCELLED':
+                return self._bookings.cancel(booking_id)
+            if fields.get('status') not in (None, 'ACTIVE'):
+                raise BookingError("Status must be ACTIVE or CANCELLED.")
+            count = current.passenger_count if passenger_count is None else passenger_count
+            self._bookings.cancel(booking_id)
+            replacement = self.book(current.train_number, current.run_date, current.from_station, current.to_station,
+                                    fields.get('coach_code') or current.coach_code, count,
+                                    fields.get('passenger_name') or current.passenger_name,
+                                    journey_id=current.journey_id)
+            self._bookings._conn.execute(
+                "UPDATE bookings SET passenger_count=?, seat_numbers_json=?, fare=?, status='ACTIVE', coach_code=?, travel_class=?, passenger_name=?, updated_at=? WHERE id=?",
+                (count, replacement.seat_numbers_json, replacement.fare, replacement.coach_code, replacement.travel_class, replacement.passenger_name, replacement.updated_at, booking_id))
+            self._bookings.delete(replacement.id)
+            return self._bookings.get(booking_id)
 
-    # -- the read path ------------------------------------------------------
-    def seats_remaining(
-        self, train_number: str, run_date: str,
-        from_station: str, to_station: str, coach_code: str,
-    ) -> int:
-        """Berths left in one coach across one segment on one date."""
-        from_order, to_order = self._stop_orders(train_number, from_station, to_station)
-        capacity = self._store.coach_capacity(train_number, coach_code)
-        taken = seats_taken(
-            self._bookings.active_for_run(train_number, run_date), coach_code, from_order, to_order
-        )
-        return max(capacity - taken, 0)
+    def seats_remaining(self, train_number, run_date, from_station, to_station, coach_code):
+        from src.inventory import InventoryService
+        self._stop_orders(train_number, from_station, to_station)
+        return len(InventoryService(self._store, self._bookings).available(
+            train_number, run_date, from_station, to_station, coach_code))
 
     # -- internals ----------------------------------------------------------
     def _check_runs(self, train_number: str, run_date: str) -> None:
@@ -486,11 +592,11 @@ class BookingService:
         except ValueError:
             raise BookingError(f"'{run_date}' is not a date in YYYY-MM-DD form.") from None
         window = self._store.get_run_date_range()
-        if window and not (window[0] <= run_date <= window[1]):
+        if window and not ((dt.date.fromisoformat(window[0]) - dt.timedelta(days=7)).isoformat() <= run_date <= (dt.date.fromisoformat(window[1]) + dt.timedelta(days=4)).isoformat()):
             raise BookingError(
                 f"{run_date} is outside the booking window ({window[0]} .. {window[1]})."
             )
-        if not self._store.runs_on_date(train_number, run_date):
+        if dt.date.fromisoformat(run_date).strftime("%a").upper() not in self._store.get_run_pattern(train_number):
             raise BookingError(f"Train {train_number} does not run on {run_date}.")
 
     def _stop_orders(self, train_number: str, from_station: str, to_station: str) -> tuple[int, int]:

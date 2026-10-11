@@ -39,6 +39,7 @@ Dates
 from __future__ import annotations
 
 import logging
+from src.config import MIN_TRAIN_CHANGE
 from dataclasses import replace
 
 from src.constraint_checks import (
@@ -68,7 +69,7 @@ logger = logging.getLogger(__name__)
 #: over-bridge to another platform, locating the right coach in an 18-24 coach
 #: rake and boarding -- plus tolerance for the first train running a few
 #: minutes late, which a same-train coach walk never has to absorb.
-MIN_DIFFERENT_TRAIN_BUFFER_MINUTES: float = 20.0
+MIN_DIFFERENT_TRAIN_BUFFER_MINUTES: float = MIN_TRAIN_CHANGE
 
 
 def get_successors_different_train(

@@ -5,7 +5,7 @@ scored on every dimension, ranked best-first.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.agents.fare_time_agent import FareTimeScore
 from src.agents.seat_transfer_agent import TransferFeasibilityScore
@@ -61,6 +61,12 @@ class SearchEffort:
     agent_name: str
     nodes_expanded: int
     found: bool
+    # Runtime telemetry does not change the semantic recommendation. In
+    # particular, enabling tracing must preserve recommendation equality.
+    seconds: float = field(default=0.0, compare=False)
+    truncated: bool = False
+    seat_checks: int = 0
+    rejections: dict[str, int] = field(default_factory=dict)
 
     def describe(self) -> str:
         return f"{self.agent_name} searched {self.nodes_expanded} state(s), {'found' if self.found else 'no'} itinerary"

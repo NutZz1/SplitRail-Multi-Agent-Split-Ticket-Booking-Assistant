@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for SameTrainSearchAgent on real 12658 data.
 
 Coroutines are driven with ``asyncio.run`` so no pytest-asyncio plugin is
@@ -16,7 +16,8 @@ import pytest
 
 from src.agents.same_train_search_agent import SameTrainSearchAgent, diagnose_failure
 from src.proposal import ItineraryProposal
-from src.search_astar import astar_search
+from src.seat_search import search_seats
+from src.config import SEAT_CANDIDATES
 from src.state import UserQuery
 from tests.markers import requires_full_network
 
@@ -50,14 +51,14 @@ def test_propose_finds_sbc_to_mas(agent, mail_query):
     assert best.total_time_minutes == 340  # same optimum Step 4's A* test established
     assert best.transfer_count == 0 and len(best.tickets) == 1
     assert best.goal_state.current_station == "MAS"
-    assert 1 <= len(p.candidates) <= 3
+    assert 1 <= len(p.candidates) <= SEAT_CANDIDATES
     print("\n" + p.describe())
 
 
 @requires_full_network
 def test_search_stats_carried_through_unchanged(agent, store, heuristic, mail_query):
     p = asyncio.run(agent.propose(mail_query))
-    _, direct = astar_search(mail_query, store, heuristic)
+    _, direct = search_seats(mail_query, store, heuristic, "same_train")
     for field in ("nodes_expanded", "nodes_generated", "max_frontier_size", "path_found", "total_cost", "algorithm"):
         assert getattr(p.search_stats, field) == getattr(direct, field), field
     assert p.search_stats.nodes_expanded > 0
@@ -80,7 +81,7 @@ def test_propose_impossible_class_returns_not_found(agent):
 
 @pytest.mark.parametrize("query,expect", [
     (UserQuery("ZZZZZ", "MAS", DATE), "No train has a real halt"),
-    (UserQuery("SBC", "MAS", dt.date(2026, 9, 26)), "runs on 2026-09-26 (SAT)"),
+    (UserQuery("SBC", "MAS", dt.date(2026, 9, 26)), "Boarding date 2026-09-26 is outside the booking window"),
     (UserQuery("SBC", "MYS", DATE), "No single train runs SBC -> MYS"),
     (UserQuery("SBC", "MAS", DATE, travel_class_preference="CC", class_is_hard_constraint=True), "Class CC is not offered"),
 ])
@@ -200,7 +201,7 @@ def test_search_exceptions_propagate_thread_mode(store):
 def test_search_exceptions_propagate_pool_mode(pool, store, heuristic):
     # An error inside a worker process surfaces in the awaiting coroutine.
     agent = SameTrainSearchAgent(store, heuristic, pool=pool)
-    with pytest.raises(AttributeError, match="destination_station"):
+    with pytest.raises(AttributeError, match="travel_date"):
         asyncio.run(agent.propose("not a query"))  # type: ignore[arg-type]
 
 
@@ -221,5 +222,4 @@ def test_proposal_is_frozen(agent, mail_query):
 def test_proposal_risk_flag(agent, mail_query):
     p = asyncio.run(agent.propose(mail_query))
     assert p.best.is_risky == any(t.status in {"RAC", "WAITLIST"} for t in p.best.tickets)
-
 

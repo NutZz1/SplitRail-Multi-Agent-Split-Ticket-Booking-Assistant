@@ -42,6 +42,8 @@ ignore = [
 # so their imports cannot come first.
 "cli.py" = ["E402"]
 "web.py" = ["E402"]
+"tools/demo_acceptance.py" = ["E402"]
+"tools/benchmark_search.py" = ["E402"]
 "data_source/build_sqlite_db.py" = ["E402"]
 # conftest pins environment variables before importing anything that reads them.
 "tests/conftest.py" = ["E402"]

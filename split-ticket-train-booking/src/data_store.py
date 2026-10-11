@@ -26,6 +26,7 @@ Table reference (see README.md / data_source/build_sqlite_db.py):
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,8 +36,6 @@ from src.booking_store import (
     DEFAULT_CAPACITY,
     BookingStore,
     default_bookings_path,
-    effective_status,
-    seats_taken,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +60,7 @@ AVAILABILITY_STATUSES = frozenset({"CONFIRMED", "RAC", "WAITLIST", "UNAVAILABLE"
 #: convention of the source data itself; :mod:`src.constraint_checks`
 #: re-exports it so existing imports keep working.
 COACH_CLASS_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("DS", "2S"),  # explicitly simulated second-seating coaches on local services
     ("BE", "3A"),  # 3-tier AC economy
     ("S", "SL"),
     ("B", "3A"),
@@ -234,6 +234,8 @@ class RailDataStore:
             Path(bookings_path) if bookings_path is not None else default_bookings_path()
         )
         self._bookings_conn: BookingStore | None = None
+        self._inventory_cache = None
+        self._inventory_version = None
 
         # mode=ro makes SQLite itself refuse writes on this connection.
         # immutable=1 tells SQLite the file cannot change while open, so it
@@ -248,6 +250,12 @@ class RailDataStore:
         uri = self.db_path.resolve().as_uri() + "?mode=ro&immutable=1"
         self._conn: sqlite3.Connection = sqlite3.connect(uri, uri=True, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # Reference DB is immutable for this store's lifetime. Cache repeated
+        # timetable/coach lookups; never cache live booking or inventory reads.
+        for name in ('get_stops', 'get_real_halt_stops', 'get_train', 'get_station',
+                     'get_coach_composition', 'coach_distance', 'get_berth_rule',
+                     'get_run_pattern', 'get_demo_train_numbers'):
+            setattr(self, name, lru_cache(maxsize=12000)(getattr(self, name)))
 
     # -- lifecycle ----------------------------------------------------------
     def clone(self) -> "RailDataStore":
@@ -433,6 +441,18 @@ class RailDataStore:
         ).fetchall()
         return [(r["code"], r["name"]) for r in rows]
 
+    def get_region_stations(self, region='Kerala') -> list[tuple[str, str]]:
+        return [(r['code'], r['name']) for r in self._conn.execute(
+            'SELECT code, name FROM stations WHERE lower(state)=lower(?) ORDER BY name, code', (region,))]
+
+    def get_operational_station_codes(self) -> set[str]:
+        return {s.station_code for t in self.get_demo_train_numbers() for s in self.get_real_halt_stops(t)}
+
+    def get_region_train_numbers(self, region='Kerala') -> list[str]:
+        codes = {c for c, _ in self.get_region_stations(region)}
+        return [t for t in self.get_demo_train_numbers()
+                if any(s.station_code in codes for s in self.get_real_halt_stops(t))]
+
     def get_all_train_numbers(self) -> list[str]:
         """Return every train number that has at least one scheduled stop.
 
@@ -544,13 +564,18 @@ class RailDataStore:
         return abs(row["pos_a"] - row["pos_b"])
 
     # -- availability -------------------------------------------------------
+    def inventory(self):
+        """Reuse derived masks only while the ledger's SQLite version agrees."""
+        from src.inventory import InventoryService
+        bookings = self._bookings()
+        version = bookings._conn.execute('PRAGMA data_version').fetchone()[0] if bookings else -1
+        if self._inventory_cache is None or version != self._inventory_version:
+            self._inventory_cache = InventoryService(self, bookings)
+            self._inventory_version = version
+        return self._inventory_cache
     #
-    # Availability comes in two layers. ``seat_availability`` in railway.db is
-    # the synthetic BASELINE: what a typical run of this train looks like, with
-    # no date attached. Reservations recorded in bookings.db are the per-DATE
-    # layer on top of it. Passing ``run_date`` merges the two; omitting it
-    # returns the baseline unchanged, which is what every existing caller and
-    # test expects.
+    # Undated calls preserve historical fixtures for legacy comparisons.
+    # Dated calls use physical inventory and the persistent booking overlay.
     def get_availability(
         self, train_number: str, from_station: str, to_station: str,
         run_date: Optional[str] = None,
@@ -567,6 +592,16 @@ class RailDataStore:
         applied, so a coach that has been reserved out reads UNAVAILABLE on
         that date and keeps its baseline status on every other date.
         """
+        if run_date is not None:
+            inventory = self.inventory()
+            try:
+                inventory.span(train_number, from_station, to_station)
+            except ValueError:
+                return {}
+            if not inventory.operates(train_number, run_date):
+                return {}
+            return {c: inventory.snapshot(train_number, run_date, from_station, to_station, c)['status']
+                    for c in inventory.coaches(train_number)}
         rows = self._conn.execute(
             """
             SELECT sa.coach_code, sa.status
@@ -579,24 +614,7 @@ class RailDataStore:
             """,
             (train_number, from_station, to_station),
         ).fetchall()
-        baseline = {r["coach_code"]: r["status"] for r in rows}
-        if run_date is None or not baseline:
-            return baseline
-        held = self._active_bookings(train_number, run_date)
-        if not held:
-            return baseline
-        orders = self._stop_orders(train_number)
-        span = (orders.get(from_station), orders.get(to_station))
-        if span[0] is None or span[1] is None:
-            return baseline
-        return {
-            coach: effective_status(
-                status,
-                self.coach_capacity(train_number, coach),
-                seats_taken(held, coach, span[0], span[1]),
-            )
-            for coach, status in baseline.items()
-        }
+        return {r["coach_code"]: r["status"] for r in rows}
 
     def get_availability_from(
         self, train_number: str, from_station: str, run_date: Optional[str] = None,
@@ -610,6 +628,14 @@ class RailDataStore:
         make, so passing a date is what makes BFS, UCS and A* all see
         reservations without any change to the algorithms themselves.
         """
+        if run_date is not None:
+            inventory = self.inventory()
+            stops = inventory.route(train_number)
+            index = next((i for i, stop in enumerate(stops) if stop.station_code == from_station), None)
+            if index is None or not inventory.operates(train_number, run_date):
+                return {}
+            return {stop.station_code: {c: inventory.snapshot(train_number, run_date, from_station, stop.station_code, c)['status']
+                    for c in inventory.coaches(train_number)} for stop in stops[index+1:]}
         rows = self._conn.execute(
             """
             SELECT to_station, coach_code, status
@@ -621,28 +647,6 @@ class RailDataStore:
         out: dict[str, dict[str, str]] = {}
         for r in rows:
             out.setdefault(r["to_station"], {})[r["coach_code"]] = r["status"]
-        if run_date is None or not out:
-            return out
-
-        held = self._active_bookings(train_number, run_date)
-        if not held:
-            return out
-        orders = self._stop_orders(train_number)
-        start = orders.get(from_station)
-        if start is None:
-            return out
-
-        capacities: dict[str, int] = {}
-        for to_station, coaches in out.items():
-            end = orders.get(to_station)
-            if end is None or end <= start:
-                continue
-            for coach, status in list(coaches.items()):
-                if coach not in capacities:
-                    capacities[coach] = self.coach_capacity(train_number, coach)
-                coaches[coach] = effective_status(
-                    status, capacities[coach], seats_taken(held, coach, start, end)
-                )
         return out
 
     # -- bookings (read side) ----------------------------------------------
@@ -744,11 +748,12 @@ class RailDataStore:
         layer should not depend on it just to open a database.
         """
         from src.demo_window import window_start
+        from src.config import NETWORK_PROFILE
 
         recorded = self.get_meta("window_start")
         if recorded is None:
             return True  # built before db_meta existed; rebuild to get a window
-        return recorded != (today or window_start().isoformat())
+        return recorded != (today or window_start().isoformat()) or self.get_meta('network_profile') != NETWORK_PROFILE
 
     # -- run calendar -------------------------------------------------------
     def runs_on_date(self, train_number: str, date_str: str) -> bool:

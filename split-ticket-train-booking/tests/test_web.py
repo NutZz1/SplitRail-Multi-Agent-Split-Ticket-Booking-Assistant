@@ -1,5 +1,6 @@
 """Boundary and real-result contract checks for the browser adapter."""
 import json
+import datetime as dt
 
 import pytest
 
@@ -30,6 +31,8 @@ def test_real_results_are_serializable_and_include_transfer_details(web_system):
     assert split["tickets"][0]["train_name"]
     assert "goal_state" not in split
     assert all(isinstance(o["pareto_optimal"], bool) for o in result["options"])
+    assert all(sum(o['score_components'].values()) == pytest.approx(o['score']) for o in result['options'])
+    assert isinstance(result['truncated'], bool)
     assert result["options"][0]["pareto_optimal"] is True  # the top-ranked option is always on the front
 
 
@@ -78,25 +81,25 @@ def offline(monkeypatch):
 # --- direct-train endpoint -------------------------------------------------
 @requires_full_network
 def test_direct_trains_returns_real_runs(web_system, offline):
-    """The whole network is covered, not just the six demo trains."""
-    result = direct_trains(web_system, {"origin": "HWH", "destination": "NDLS"})
-    numbers = {t["train_number"] for t in result["trains"]}
-    assert result["source"] == "local"
-    assert "12301" in numbers  # Howrah - New Delhi Rajdhani
-    assert all(t["duration_minutes"] > 0 for t in result["trains"])
+    result = direct_trains(web_system, {'origin':'KYJ','destination':'PGT','date':'2026-09-16'})
+    numbers = {t['train_number'] for t in result['trains']}
+    assert {'16343','12625','12624','12696'} <= numbers
+    assert numbers <= set(web_system.store.get_demo_train_numbers())
+    assert all(t['duration_minutes'] > 0 for t in result['trains'])
+    assert all(t['classes'] for t in result['trains'])
 
 
 def test_direct_trains_respects_direction(web_system, offline):
     forward = {t["train_number"] for t in
-               direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})["trains"]}
+               direct_trains(web_system, {"origin": "SBC", "destination": "MAS", "date": "2026-09-16"})["trains"]}
     backward = {t["train_number"] for t in
-                direct_trains(web_system, {"origin": "MAS", "destination": "SBC"})["trains"]}
+                direct_trains(web_system, {"origin": "MAS", "destination": "SBC", "date": "2026-09-16"})["trains"]}
     assert forward and backward and not forward & backward
 
 
 def test_direct_trains_rejects_identical_stations(web_system, offline):
     with pytest.raises(ValueError):
-        direct_trains(web_system, {"origin": "SBC", "destination": "SBC"})
+        direct_trains(web_system, {"origin": "SBC", "destination": "SBC", "date": "2026-09-16"})
 
 
 def test_direct_trains_rejects_unknown_station(web_system, offline):
@@ -114,8 +117,8 @@ def test_live_source_is_used_when_available(web_system, monkeypatch):
                       train_dest_code="MAS")
     monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
     monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: [train])
-    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS",
-                                        "date": "2026-09-16"})
+    trains, other, provider = web._live_direct("SBC", "MAS", dt.date(2026,9,16))
+    result = {"trains":trains, "provider":provider, "source":"live"}
     assert result["source"] == "live"
     assert result["trains"][0]["train_number"] == "12345"
     assert result["trains"][0]["running_days"] == ["Mon", "Tue", "Wed", "Thu",
@@ -123,36 +126,25 @@ def test_live_source_is_used_when_available(web_system, monkeypatch):
 
 
 def test_falls_back_to_local_when_live_fails(web_system, monkeypatch):
-    """An unreachable live service must not break the page."""
-    from src.live_trains import LiveLookupError
-
-    def boom(*a, **k):
-        raise LiveLookupError("erail is down")
-
-    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
-    monkeypatch.setattr(web, "fetch_between_stations", boom)
-    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
-    assert result["source"] == "local"
-    assert "erail is down" in result["notice"]
-    assert result["trains"]
+    # The booking list is local even if a live provider exists or fails.
+    monkeypatch.setattr(web, 'fetch_between_stations', lambda *a: pytest.fail('Booking search must not call a live provider'))
+    result = direct_trains(web_system, {'origin':'SBC','destination':'MAS','date':'2026-09-16'})
+    assert result['source'] == 'local' and result['trains']
+    assert 'simulated' in result['notice']
 
 
 def test_live_results_are_filtered_by_travel_date(web_system, monkeypatch):
-    """A Sunday-only train is hidden on a Wednesday and counted separately."""
     from src.live_trains import LiveTrain
-    sunday_only = LiveTrain(number="22697", name="SUNDAY EXP", from_code="SBC",
-                            from_name="Bengaluru", to_code="MAS", to_name="Chennai",
-                            departure="04:35", arrival="11:10", travel_time="06:35",
-                            running_days="0000001", train_origin_code="SBC",
-                            train_dest_code="MAS")
-    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
-    monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: [sunday_only])
-    wednesday = direct_trains(web_system, {"origin": "SBC", "destination": "MAS",
-                                           "date": "2026-09-16"})
-    assert wednesday["trains"] == [] and wednesday["other_days"] == 1
-    sunday = direct_trains(web_system, {"origin": "SBC", "destination": "MAS",
-                                        "date": "2026-09-20"})
-    assert len(sunday["trains"]) == 1 and sunday["other_days"] == 0
+    from src import railradar
+    train = LiveTrain(number='22697', name='SUNDAY EXP', from_code='SBC', from_name='Bengaluru',
+        to_code='MAS', to_name='Chennai', departure='04:35', arrival='11:10', travel_time='06:35',
+        running_days='0000001', train_origin_code='SBC', train_dest_code='MAS')
+    monkeypatch.setattr(railradar, 'is_configured', lambda: False)
+    monkeypatch.setattr(web, 'fetch_between_stations', lambda *args:[train])
+    wed, excluded, _ = web._live_direct('SBC','MAS',dt.date(2026,9,16))
+    sun, _, _ = web._live_direct('SBC','MAS',dt.date(2026,9,20))
+    assert wed == [] and excluded == 1
+    assert len(sun) == 1
 
 
 def test_bad_date_is_rejected(web_system):
@@ -174,7 +166,8 @@ def test_railradar_is_preferred_when_configured(web_system, monkeypatch):
     monkeypatch.setattr(railradar, "is_configured", lambda: True)
     monkeypatch.setattr(railradar, "fetch_between_stations", lambda *a, **k: [train])
     monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: pytest.fail("erail should not be called"))
-    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
+    trains, _, provider = web._live_direct("SBC", "MAS", None)
+    result = {"trains":trains, "provider":provider}
     assert result["provider"] == "railradar.in"
     assert result["trains"][0]["halts"] == 2
 
@@ -194,21 +187,19 @@ def test_falls_back_to_erail_when_railradar_fails(web_system, monkeypatch):
     monkeypatch.setattr(railradar, "is_configured", lambda: True)
     monkeypatch.setattr(railradar, "fetch_between_stations", boom)
     monkeypatch.setattr(web, "fetch_between_stations", lambda *a, **k: [train])
-    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
+    trains, _, provider = web._live_direct("SBC", "MAS", None)
+    result = {"trains":trains, "provider":provider}
     assert result["provider"] == "erail.in"
 
 
 def test_repeated_provider_failures_are_not_repeated_in_the_notice(web_system, monkeypatch):
     from src.live_trains import LiveLookupError
     from src import railradar
-
-    def boom(*a, **k):
-        raise LiveLookupError("everything is down")
-
-    monkeypatch.setattr(web, "LIVE_LOOKUPS", True)
-    monkeypatch.setattr(railradar, "is_configured", lambda: True)
-    monkeypatch.setattr(railradar, "fetch_between_stations", boom)
-    monkeypatch.setattr(web, "fetch_between_stations", boom)
-    result = direct_trains(web_system, {"origin": "SBC", "destination": "MAS"})
-    assert result["source"] == "local"
-    assert result["notice"].count("everything is down") == 1
+    def boom(*args, **kwargs):
+        raise LiveLookupError('everything is down')
+    monkeypatch.setattr(railradar,'is_configured',lambda:True)
+    monkeypatch.setattr(railradar,'fetch_between_stations',boom)
+    monkeypatch.setattr(web,'fetch_between_stations',boom)
+    with pytest.raises(LiveLookupError) as error:
+        web._live_direct('SBC','MAS',None)
+    assert str(error.value).count('everything is down') == 1

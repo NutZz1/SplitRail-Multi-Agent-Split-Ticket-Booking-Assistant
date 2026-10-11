@@ -54,9 +54,8 @@ from src.data_store import RailDataStore
 from src.final_recommendation import FinalRecommendation, SearchEffort
 from src.heuristic import RailHeuristic
 from src.proposal import CandidateItinerary, ItineraryProposal
-from src.search_astar import astar_search_k
+from src.seat_search import search_seats
 from src.state import UserQuery
-from src.successors_different_train import get_successors_different_train
 
 
 def resolve_single_agent(
@@ -68,12 +67,11 @@ def resolve_single_agent(
     t0 = time.perf_counter()
 
     # ---- Stage 1: same-train, THEN different-train (not gathered) --------
-    same_goals, same_stats = astar_search_k(same_train_query(query), store, heuristic, k=SAME_TRAIN_K_CANDIDATES)
+    same_goals, same_stats = search_seats(same_train_query(query), store, heuristic, "same_train", k=SAME_TRAIN_K_CANDIDATES)
     same_reason = None if same_goals else diagnose_same_train_failure(query, store, same_stats)
     same_p = ItineraryProposal.from_search("SameTrainSearchAgent", query, same_goals, same_stats, same_reason)
 
-    diff_goals, diff_stats = astar_search_k(
-        query, store, heuristic, k=DIFFERENT_TRAIN_K_CANDIDATES, successors_fn=get_successors_different_train)
+    diff_goals, diff_stats = search_seats(query, store, heuristic, "different_train", k=DIFFERENT_TRAIN_K_CANDIDATES)
     diff_reason = None if diff_goals else diagnose_different_train_failure(query, store, diff_stats)
     diff_p = ItineraryProposal.from_search("DifferentTrainSearchAgent", query, diff_goals, diff_stats, diff_reason)
 

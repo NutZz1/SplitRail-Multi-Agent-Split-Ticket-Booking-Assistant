@@ -210,7 +210,7 @@ def test_at_bnc_continue_and_transfer_are_generated(store):
         assert (closed.train_number, closed.from_station, closed.to_station, closed.coach) == (MAIL, "SBC", "BNC", "S1")
         assert closed.boarding_datetime == dt.datetime(2026, 9, 16, 22, 45)
         assert closed.alighting_datetime == dt.datetime(2026, 9, 16, 22, 55)
-        assert closed.status == store.get_availability(MAIL, "SBC", "BNC")["S1"]
+        assert closed.status == store.get_availability(MAIL, "SBC", "BNC", "2026-09-16")["S1"]
         assert t.cumulative_time_minutes == state.cumulative_time_minutes  # transferring costs no moving time
     # one transfer per class, and the SL pick is the nearest bookable S-coach to S1
     assert len({t.current_class for t in k["TRANSFER"]}) == len(k["TRANSFER"])

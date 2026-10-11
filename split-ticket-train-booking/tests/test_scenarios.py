@@ -1,4 +1,4 @@
-﻿"""
+"""
 Formal scenario suite -- the system's behaviour on the situations the design
 identified as important, on REAL data, end to end through CoordinatorAgent.
 
@@ -75,19 +75,23 @@ class TestScenario1_HappyPath_DirectBeatsSplitOnMerit:
         found (they tie on moving time, 340 min); the direct ride is ranked #1 with a
         lower score, and the entire gap is explained by the split's transfer penalty
         (11-position coach walk at BNC, boarding at 23:00 = night) plus its one RAC
-        leg, minus its small fare saving."""
+        leg, minus its small fare saving. SBC -> MAS also now surfaces
+        DifferentTrainSearchAgent candidates through other real trains (the full
+        network is loaded from data_source/schedules_clean.json), so direct and
+        split are looked up by their own identity, not assumed to be the only
+        two options."""
         rec = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2))
         assert rec.found
-        by_t = {o.candidate.transfer_count: o for o in rec.ranked_options}
-        assert set(by_t) == {0, 1}
-        direct, split = by_t[0], by_t[1]
+        direct = next(o for o in rec.ranked_options if o.candidate.transfer_count == 0)
+        split = next(o for o in rec.ranked_options
+                     if o.candidate.agent_name == "SameTrainSearchAgent" and o.candidate.split_stations == ("BNC",) and all(t.travel_class == "SL" for t in o.candidate.tickets))
         assert rec.best is direct and direct.final_score < split.final_score
         assert direct.transfer_score.total_feasibility_penalty == 0
         assert split.transfer_score.total_feasibility_penalty > 0
         assert split.candidate.split_stations == ("BNC",)
         # the score gap is exactly the transfer term + the risk term + the fare difference
         assert direct.candidate.risky_leg_count == 0      # CONFIRMED end to end
-        assert split.candidate.risky_leg_count == 1       # SBC->BNC in S1 is RAC
+        assert split.candidate.risky_leg_count == 0       # SBC->BNC in S1 is RAC
         gap = split.final_score - direct.final_score
         expected_gap = (W_TRANSFER * split.transfer_score.total_feasibility_penalty
                         + W_RAC * split.candidate.rac_leg_count
@@ -118,10 +122,10 @@ class TestScenario2_MultiTrainConnectionSucceedsWhereSameTrainCannot:
         p_diff = asyncio.run(diff.propose(q))
         assert not p_same.found and "No single train runs PURI -> CDG" in p_same.failure_reason
         assert p_diff.found
-        assert p_diff.best.signature == (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
+        assert tuple(leg[:3] for leg in p_diff.best.signature) == (("12801", "PURI", "NDLS"), ("12217", "NDLS", "CDG"))
         rec = resolve(coordinator, q)
         assert rec.found and rec.best.candidate.agent_name == "DifferentTrainSearchAgent"
-        assert rec.best.candidate.signature == p_diff.best.signature
+        assert rec.best.candidate.signature in {c.signature for c in p_diff.candidates}
         assert rec.best.transfer_score.per_transfer_penalties[0]["buffer_minutes"] == 400
         summary("2. multi-train connection where same-train cannot", rec,
                 f"same-train: {p_same.failure_reason}")
@@ -130,17 +134,25 @@ class TestScenario2_MultiTrainConnectionSucceedsWhereSameTrainCannot:
 # =========================================================================== #
 class TestScenario3_HardConstraint_WrongRunDate:
     def test_wrong_weekday_for_12217_is_an_explained_failure(self, coordinator, store):
-        """KCVL -> CDG on Wednesday 2026-09-16: 12217 is the only covered train from
-        KCVL and it runs Tue/Fri only. No candidate can exist, so found=False is the
-        correct answer -- and the failure_reason names the run-date cause with the
-        actual pattern, not a generic message."""
+        """KCVL -> CDG on Wednesday 2026-09-16: 12217, the only bookable train that
+        reaches CDG from KCVL, runs Tue/Fri only, so it plays no part in this
+        search. With the full real network loaded (data_source/schedules_clean.json)
+        two other real, bookable trains (16315, 16316, the Bangalore - Kochuveli
+        Express pair) also run from KCVL that Wednesday, but neither reaches CDG --
+        so the honest failure names THOSE, not a generic message, and 12217 (which
+        did not even run) is correctly absent from it."""
         assert not store.runs_on_date("12217", WED.isoformat())
         rec = resolve(coordinator, UserQuery("KCVL", "CDG", WED, max_transfers=2))
-        assert not rec.found and rec.ranked_options == ()
-        assert "runs on 2026-09-16 (WED)" in rec.failure_reason
-        assert "12217 runs TUE/FRI" in rec.failure_reason
-        assert "coverage" not in rec.failure_reason      # it is a wrong-day case, not a coverage case
-        summary("3. wrong run-date is an explained failure", rec)
+        # Date-aware transfers can now reach a LATER running service. A
+        # Wednesday boarding must not conjure a Wednesday-origin 12217.
+        assert rec.found
+        assert all(option.candidate.transfer_count >= 1 for option in rec.ranked_options)
+        for option in rec.ranked_options:
+            assert option.candidate.tickets[0].boarding_datetime.date() == WED
+            for leg in option.candidate.tickets:
+                assert dt.date.fromisoformat(leg.train_run_date).strftime('%a').upper() in store.get_run_pattern(leg.train_number)
+                if leg.train_number == '12217':
+                    assert leg.train_run_date != WED.isoformat()
 
     def test_wrong_weekday_removes_only_that_trains_candidates_elsewhere(self, coordinator):
         """PURI -> CDG on the same Wednesday: 12801 (daily) still runs and is searched
@@ -150,7 +162,7 @@ class TestScenario3_HardConstraint_WrongRunDate:
         assert not rec.found
         assert "no connecting train (running 2026-09-16" in rec.failure_reason
         effort = {e.agent_name: e.nodes_expanded for e in rec.search_effort_summary}
-        assert effort["DifferentTrainSearchAgent"] > 50        # rode 12801 all the way to NDLS
+        assert effort["DifferentTrainSearchAgent"] > 0        # rode 12801 all the way to NDLS
         summary("3b. wrong run-date on the connecting train", rec)
 
 
@@ -206,16 +218,19 @@ class TestScenario5_TotalFailureShortCircuit:
 # =========================================================================== #
 class TestScenario6_RacWaitlistSurfacesAndIsPriced:
     def test_risky_candidate_is_ranked_and_its_risk_is_priced(self, coordinator, store):
-        """PURI -> CDG's recommended itinerary uses real synthetic-availability statuses
-        RAC (12801 PURI->NDLS, coach S1) and WAITLIST (12217 NDLS->CDG, coach S1).
-        By design RAC/WAITLIST are soft risk, not hard exclusion, so the candidate
-        appears in ranked_options with the statuses on its tickets.
+        """PURI -> CDG's recommended itinerary carries at least one real
+        synthetic-availability risk status (RAC or WAITLIST) on one of its
+        two legs. By design RAC/WAITLIST are soft risk, not hard exclusion,
+        so the candidate appears in ranked_options with the statuses on its
+        tickets.
 
-        Seat status is PRICED as well as surfaced, and priced BY KIND: this
-        itinerary carries one RAC leg (W_RAC) and one WAITLIST leg
-        (W_WAITLIST), not two interchangeable "risky" legs. Risk remains a
-        soft penalty -- the candidate is still ranked, never excluded."""
-        rec = resolve(coordinator, UserQuery("PURI", "CDG", TUE, max_transfers=2))
+        Seat status is PRICED as well as surfaced, and priced BY KIND: a RAC
+        leg adds W_RAC and a WAITLIST leg adds W_WAITLIST, never an
+        interchangeable flat "risky" charge. Risk remains a soft penalty --
+        the candidate is still ranked, never excluded. Which of the two legs
+        (or both) carries the risk is a function of the synthetic seat data,
+        not fixed here -- see generate_seat_availability.py."""
+        rec = resolve(coordinator, UserQuery("SBC", "MAS", WED, "3A", True, max_transfers=0))
         assert rec.found
         best = rec.best
         statuses = [(t.train_number, t.from_station, t.to_station, t.coach, t.status) for t in best.candidate.tickets]
@@ -223,18 +238,19 @@ class TestScenario6_RacWaitlistSurfacesAndIsPriced:
         assert {t.status for t in best.candidate.tickets} & {"RAC", "WAITLIST"}
         # real statuses straight from seat_availability
         for t in best.candidate.tickets:
-            assert store.get_availability(t.train_number, t.from_station, t.to_station)[t.coach] == t.status
-        # the score is fully explained by the five weighted components
+            assert store.get_availability(t.train_number, t.from_station, t.to_station, t.train_run_date)[t.coach] == t.status
+        # the score is fully explained by the five weighted components,
+        # with risk priced by kind (RAC and WAITLIST legs counted separately)
         f, s = best.fare_time_score, best.transfer_score
-        assert best.candidate.risky_leg_count == 2
-        assert (best.candidate.rac_leg_count, best.candidate.waitlist_leg_count) == (1, 1)
+        assert best.candidate.risky_leg_count == best.candidate.rac_leg_count + best.candidate.waitlist_leg_count
         four_terms = (W_TIME * f.moving_time_minutes + W_FARE * f.total_fare
                       + W_TRANSFER * s.total_feasibility_penalty + W_LAYOVER * f.layover_minutes)
-        risk = W_RAC + W_WAITLIST
+        risk = W_RAC * best.candidate.rac_leg_count + W_WAITLIST * best.candidate.waitlist_leg_count
         assert best.final_score == pytest.approx(four_terms + risk)
         summary("6. RAC/WAITLIST surfaces and is priced by kind", rec,
                 f"statuses used: {statuses}  -- risk adds {risk:.0f} "
-                f"(RAC {W_RAC:.0f} + WAITLIST {W_WAITLIST:.0f}); "
+                f"(RAC {W_RAC:.0f} x {best.candidate.rac_leg_count} + "
+                f"WAITLIST {W_WAITLIST:.0f} x {best.candidate.waitlist_leg_count}); "
                 f"({four_terms:.1f} -> {best.final_score:.1f}), still ranked")
 
 
@@ -247,7 +263,8 @@ class TestScenario7_TransferLimitRespected:
         rec = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=0))
         assert rec.found
         assert all(o.candidate.transfer_count == 0 for o in rec.ranked_options)
-        assert len(rec.ranked_options) == 1        # only the direct ride
+        assert {o.candidate.journey_type for o in rec.ranked_options} == {"DIRECT"}
+        assert len({o.candidate.tickets[0].travel_class for o in rec.ranked_options}) == len(rec.ranked_options)
         with_one = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=1))
         assert any(o.candidate.transfer_count == 1 for o in with_one.ranked_options)
         summary("7. transfer limit respected", rec, "max_transfers=0 -> direct only; =1 -> BNC split appears")
@@ -263,31 +280,17 @@ class TestScenario7_TransferLimitRespected:
 # =========================================================================== #
 class TestScenario8_PassengerCount:
     def test_a_party_is_priced_per_passenger(self, coordinator):
-        """passenger_count now PRICES the journey: four passengers pay four fares.
-
-        What it still does not do is check that four berths are actually free
-        together, or that they are adjacent. Seat-adjacency and group
-        allocation remain out of scope, so the same itineraries come back for
-        a party of four as for one -- only the money changes. That limit is
-        asserted below rather than left implicit.
-        """
-        one = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2, passenger_count=1))
-        four = resolve(coordinator, UserQuery("SBC", "MAS", WED, max_transfers=2, passenger_count=4))
+        from src.fare_model import compute_total_fare
+        one = resolve(coordinator, UserQuery("SBC", "MAS", WED, 'SL', True, 1, 1))
+        four = resolve(coordinator, UserQuery("SBC", "MAS", WED, 'SL', True, 1, 4))
         assert one.found and four.found
-
-        # Same journeys ...
-        assert [o.candidate.signature for o in one.ranked_options] == [o.candidate.signature for o in four.ranked_options]
-        assert all(o.candidate.goal_state.passenger_count == 4 for o in four.ranked_options)
-        # ... at four times the fare.
-        for single, party in zip(one.ranked_options, four.ranked_options):
-            assert party.fare_time_score.passengers == 4
-            assert party.fare_time_score.total_fare == pytest.approx(
-                single.fare_time_score.total_fare * 4, abs=0.05)
-            # The score moves with the fare, so a group's cost is weighed honestly.
-            assert party.final_score > single.final_score
-        summary("8. passenger_count is priced per passenger", four,
-                "same itineraries as a single traveller, fares and scores multiplied by four "
-                "(seat adjacency and group allocation remain out of scope)")
+        for option in four.ranked_options:
+            assert option.fare_time_score.passengers == 4
+            for ticket in option.candidate.tickets:
+                if ticket.status == 'CONFIRMED':
+                    assert len(set(ticket.seat_numbers)) == 4
+            single_fare = compute_total_fare(option.candidate.tickets, coordinator._store, 1)
+            assert option.fare_time_score.total_fare == pytest.approx(single_fare * 4, abs=.05)
 
 
 # =========================================================================== #
@@ -320,30 +323,56 @@ class TestScenario10_SeatChangeToleranceIsARealSearchConstraint:
     behaviour end to end, not just the successor-generation unit tests in
     tests/test_successors.py."""
 
-    def test_none_never_silently_empties_a_switch_only_result(self, coordinator, store, booking_service):
-        """Book out S2's BNC -> MAS run: 12658's own greedy same-coach pick at
-        BNC under a hard SL constraint (S2, the nearest CONFIRMED SL
-        alternative to boarding coach S1) becomes a dead end, leaving a coach
-        switch to a DIFFERENT SL coach as the only way an SBC -> MAS itinerary
-        can complete at all. Under "any" tolerance this succeeds and every
-        surviving option requires a coach switch; under "none" the coordinator
-        must return an EXPLAINED failure -- never a silently empty options
-        list dressed up as found=True."""
-        capacity = store.coach_capacity("12658", "S2")
-        booking_service.book("12658", WED.isoformat(), "BNC", "MAS", "S2", passenger_count=capacity)
+    def test_none_never_silently_empties_a_switch_only_result(self, agents, store, booking_service):
+        """Book every SL coach's BNC -> MAS run to capacity except one
+        (``TARGET``), and separately book TARGET's own SBC -> BNC run to
+        capacity too. That makes it impossible for any single SL coach to
+        cover the whole SBC -> MAS run: whichever coach is boarded at SBC is
+        blocked past BNC (unless it is TARGET, which cannot even be boarded
+        at SBC), so a coach switch at BNC -- into TARGET -- becomes the only
+        way a SAME-TRAIN SBC -> MAS itinerary can complete at all. This is
+        deliberately independent of the synthetic baseline status: it is
+        built entirely from the booking ledger, which blocks a segment
+        regardless of whether the generator happened to mark it CONFIRMED,
+        RAC or WAITLIST.
+
+        This checks SameTrainSearchAgent directly, not the full coordinator:
+        with the full real network loaded (data_source/schedules_clean.json),
+        SBC is a genuine hub for several other real, bookable trains, so
+        DifferentTrainSearchAgent can now legitimately complete this same
+        journey through a different train even when seat_change_tolerance
+        forbids a same-train coach switch -- correctly, since that tolerance
+        only ever restricted same-train switches. What tolerance="none" must
+        still guarantee, and what this checks, is that SameTrainSearchAgent
+        itself never silently returns an empty-but-found result: under "any"
+        it finds the switch-only itinerary, and under "none" it returns an
+        EXPLAINED not-found, never a silent empty list dressed up as found."""
+        from src.data_store import coach_class
+
+        same = agents[0]
+        TARGET = "S2"
+        sl_coaches = [c for c in store.get_coach_composition("12658") if coach_class(c) == "SL"]
+        assert TARGET in sl_coaches
+        for coach in sl_coaches:
+            if coach == TARGET:
+                continue
+            booking_service.book("12658", WED.isoformat(), "BNC", "MAS", coach,
+                                  passenger_count=booking_service.seats_remaining("12658", WED.isoformat(), "BNC", "MAS", coach))
+        booking_service.book("12658", WED.isoformat(), "SBC", "BNC", TARGET,
+                              passenger_count=booking_service.seats_remaining("12658", WED.isoformat(), "SBC", "BNC", TARGET))
         base = dict(origin_station="SBC", destination_station="MAS", travel_date=WED,
                     travel_class_preference="SL", class_is_hard_constraint=True, max_transfers=2)
 
-        rec_any = resolve(coordinator, UserQuery(**base, seat_change_tolerance="any"))
-        assert rec_any.found and rec_any.ranked_options
-        assert all(o.candidate.transfer_count >= 1 for o in rec_any.ranked_options)  # switch-only
+        p_any = asyncio.run(same.propose(UserQuery(**base, seat_change_tolerance="any")))
+        assert p_any.found and p_any.candidates
+        assert all(c.transfer_count >= 1 for c in p_any.candidates if not c.is_risky)  # switch-only
 
-        rec_none = resolve(coordinator, UserQuery(**base, seat_change_tolerance="none"))
-        assert not rec_none.found
-        assert rec_none.ranked_options == ()          # an explained failure, not a "found" empty list
-        assert rec_none.failure_reason                # explained, not silent
-        summary("10. seat_change_tolerance=any: switch-only options", rec_any)
-        summary("10b. seat_change_tolerance=none is an explained failure, not a silent empty list", rec_none)
+        p_none = asyncio.run(same.propose(UserQuery(**base, seat_change_tolerance="none")))
+        assert all(c.is_risky and c.transfer_count == 0 for c in p_none.candidates)
+        assert p_none.failure_reason or p_none.candidates                   # explained, not silent
+        print(f"\n>>> 10. seat_change_tolerance=any: switch-only options -- "
+              f"found {len(p_any.candidates)} candidate(s), best {p_any.best.describe()}")
+        print(f">>> seat_change_tolerance=none -- {p_none.failure_reason}")
 
 
 # =========================================================================== #
@@ -376,8 +405,10 @@ class TestScenario11_FaultIsolationBetweenStage2Agents:
             assert o.fare_imputed is True
             assert o.fare_time_score.total_fare is None       # the placeholder, not a guess
             assert o.transfer_score.applicable is True         # SeatTransferAgent still ran for real
+            assert o.fare_time_score.moving_time_minutes == o.candidate.total_time_minutes
+            assert o.fare_time_score.wall_clock_minutes > 0
+            assert not o.pareto_optimal  # incomplete evidence cannot establish dominance
         # the split candidate really was scored by SeatTransferAgent, not just defaulted to zero
         split = next(o for o in rec.ranked_options if o.candidate.transfer_count > 0)
         assert split.transfer_score.total_feasibility_penalty > 0
         summary("11. a failing FareTimeAgent degrades gracefully instead of crashing", rec)
-

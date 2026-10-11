@@ -1,0 +1,5 @@
+networkx==3.6.1
+
+[dev]
+pytest==9.1.1
+ruff==0.15.3

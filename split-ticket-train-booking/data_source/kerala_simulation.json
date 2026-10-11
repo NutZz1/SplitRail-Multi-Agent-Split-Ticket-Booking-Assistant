@@ -1,0 +1,6391 @@
+{
+  "version": "kerala-v1",
+  "station_count": 177,
+  "train_count": 265,
+  "covered_station_count": 167,
+  "timetable_unavailable": [
+    "AMLR",
+    "KLGD",
+    "MMDA",
+    "MXM",
+    "PDGM",
+    "PKP",
+    "PUPR",
+    "THZI",
+    "TZH",
+    "VDK"
+  ],
+  "assumptions": "All generated coaches and weekdays are simulation configurations. Stops/times are unchanged local records.",
+  "coaches": {
+    "06001": {
+      "name": "Chennai Central-Kollam SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06002": {
+      "name": "Kollam-Chennai Central SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06003": {
+      "name": "Chennai Central-Kollam Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06004": {
+      "name": "Kollam-Chennai Central Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06005": {
+      "name": "Chennai Central-Kollam SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06006": {
+      "name": "Kollam-Chennai Central SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06007": {
+      "name": "Chennai Central-Kollam SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06008": {
+      "name": "KollamChennai Central SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06009": {
+      "name": "Chennai CentralKollam SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06010": {
+      "name": "KollamChennai Central SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06011": {
+      "name": "Chennai Central Kollam (Weekly) SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06012": {
+      "name": "Kollam Chennai Central (Weekly) SF Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06301": {
+      "name": "Nagercoil-Mangalore Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06302": {
+      "name": "Mangalore-Nagercoil Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06345": {
+      "name": "",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06346": {
+      "name": "PALGHAT TOWN - POLLACHI Passenger SPL",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06617": {
+      "name": "Coimbatore-Nagercoil Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "06618": {
+      "name": "Nagercoil-Coimbatore Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "08569": {
+      "name": "Visakhapatnam-Kollam Sabarimalai Special",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "10215": {
+      "name": "Madgaon Ernakulam Weekly Super Fast Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "10216": {
+      "name": "Ernakulam Madgaon Weekly SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "11097": {
+      "name": "PUNE - ERNAKULAM Poorna Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "11098": {
+      "name": "ERNAKULAM - PUNE Poorna Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12075": {
+      "name": "Kozhikode-Trivandrum Jan Shatabdi Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12076": {
+      "name": "Trivandrum-Kozhikode Jan Shatabdi Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12081": {
+      "name": "Kozhikode - Trivandrum Jan Shatabdi",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12082": {
+      "name": "Trivandrum-Kozhikode Jan Shatabdi",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12201": {
+      "name": "MUMBAI LTT - KOCHUVELI Garib Rath Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12202": {
+      "name": "KOCHUVELI - MUMBAI LTT Garib Rath Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12218": {
+      "name": "CHANDIGARH - KOCHUVELI Kerala Sampark Kranti Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12223": {
+      "name": "MUM LTT - ERNAKULAM AC Duronto",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12224": {
+      "name": "ERNAKULAM - MUM LTT AC Duronto",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12257": {
+      "name": "Yesvantapur Kochuveli Garib Rath Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12258": {
+      "name": "Kochuveli-Yesvantpur Garib Rath",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12283": {
+      "name": "ERNAKULAM - DELHI H NIZAMUDDIN Duronto Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12284": {
+      "name": "DELHI H NIZAMUDDIN - ERNAKULAM Duronto Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12287": {
+      "name": "Kochuveli-Dehradun Weekly Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12288": {
+      "name": "DEHRADUN - KOCHUVELI SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12431": {
+      "name": "TRIVANDRUM - DELHI H NIZAMUDDIN Rajdhani Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12432": {
+      "name": "DELHI H NIZAMUDDIN - TRIVANDRUM Rajdhani Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12483": {
+      "name": "KOCHUVELI - AMRITSAR SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12484": {
+      "name": "AMRITSAR - KOCHUVELI SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12507": {
+      "name": "TRIVANDRUM - GUWAHATI SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12508": {
+      "name": "GUWAHATI - TRIVANDRUM SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12515": {
+      "name": "RIVANDRUM - GUWAHATI Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12516": {
+      "name": "GUWAHATI - TRIVANDRUM CENTRAL EXP",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12521": {
+      "name": "Raptisagar Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12522": {
+      "name": "Raptisagar Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12601": {
+      "name": "Chennai Mangalore Mail",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12602": {
+      "name": "Chennai Mail",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12617": {
+      "name": "ERNAKULAM - NEW DELHI H NIZAMUDDIN Mangala Lakshadweep Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12618": {
+      "name": "NEW DELHI H NIZAMUDDIN - ERNAKULAM Mangala Lakshadweep Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12644": {
+      "name": "Swarna Jayanti Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12645": {
+      "name": "Millennium Expres",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12646": {
+      "name": "Millennium Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12653": {
+      "name": "Tiruchirappalli Mangalore Weekly Superfast Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12654": {
+      "name": "Mangalore Tiruchirappalli Weekly Superfast Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12659": {
+      "name": "Gurudev Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12660": {
+      "name": "Shalimar-Nagercoil Gurudev Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12677": {
+      "name": "Bangalore City - Ernakulam Intercity SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12678": {
+      "name": "Ernakulam-BangaloreCity Intercity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12683": {
+      "name": "ERNAKULAM - BANGALORE SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12684": {
+      "name": "BANGALORE - ERNAKULAM SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12685": {
+      "name": "Chennai - Mangalore Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12686": {
+      "name": "Mangalore - Chennai Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12697": {
+      "name": "Chennai-Thiruvananthapuram Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12698": {
+      "name": "Thiruvananthapuram Central Chennai Central weekly express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12777": {
+      "name": "HUBLI - TRIVANDRUM KOCHUVELI SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12778": {
+      "name": "TRIVANDRUM KOCHUVELI - HUBLI SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12787": {
+      "name": "Bilaspur Tirunelveli SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12788": {
+      "name": "Tirunelveli Bilaspur SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12977": {
+      "name": "ERNAKULAM - AJMER Marusagar Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12978": {
+      "name": "AJMER - ERNAKULAM Marusagar Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12997": {
+      "name": "Tirunelveli - Hapa (Biweekly) SF Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "12998": {
+      "name": "Hapa-Tirunelveli Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "13351": {
+      "name": "DHANBAD - ALAPPUZHA Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "13352-Slip": {
+      "name": "Alappuzha Dhanbad Tatanagar Express Slip",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "15905": {
+      "name": "KANNIYAKUMARI - DIBRUGARH Vivek Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "15906": {
+      "name": "DIBRUGARH - KANNIYAKUMARI Vivek Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16041": {
+      "name": "Chennai- Alapuzha Alleppey Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16042": {
+      "name": "Alappuzha-Chennai Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16107": {
+      "name": "Chennai Egmore-Mangalore Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16108": {
+      "name": "Mangalore Chennai Egmore Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16128": {
+      "name": "GURUVAYUR - CHENNAI EGMORE Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16301": {
+      "name": "Venad Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16303": {
+      "name": "Vanchinad Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16304": {
+      "name": "Vanchinad Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16305": {
+      "name": "Ernakulam Kannur InterCity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16306": {
+      "name": "Kannur Ernakulam InterCity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16307": {
+      "name": "Executive Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16308": {
+      "name": "Executive Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16309": {
+      "name": "Ernakulam-Patna Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16310": {
+      "name": "Patna - Ernakulam Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16311": {
+      "name": "BIKANER - KOCHUVELI Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16312": {
+      "name": "KOCHUVELI - BIKANER Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16313": {
+      "name": "Executive Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16314": {
+      "name": "Executive Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16317": {
+      "name": "Himsagar Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16318": {
+      "name": "Himsagar Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16321": {
+      "name": "Bangalore Tiruvananthapuram Weekly Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16322": {
+      "name": "Tiruvananthapuram Bangalore Weekly Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16323": {
+      "name": "Trivandrum Shalimar Biweekly Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16324": {
+      "name": "Shalimar Tiruvananthapuram Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16325": {
+      "name": "Ahilyanagari Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16326": {
+      "name": "Ahilyanagari Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16328": {
+      "name": "Trivandrum-Korba Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16331": {
+      "name": "MUMBAI CST - TRIVANDRUM Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16332": {
+      "name": "TRIVANDRUM - MUMBAI CST Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16333": {
+      "name": "VERAVAL - TRIVANDRUM Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16334": {
+      "name": "TRIVANDRUM - VERAVAL Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16335": {
+      "name": "GANDHIDHAM - NAGERCOIL Weekly Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16337": {
+      "name": "OKHA - ERNAKULAM Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16338": {
+      "name": "ERNAKULAM - OKHA Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16341": {
+      "name": "Guruvayur-Ernakulam-Trivandrum Intercity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16342": {
+      "name": "Trivandrum-Ernakulam-Guruvayur Intercity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16345": {
+      "name": "MUMBAI LTT - TRIVANDRUM Netravati Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16346": {
+      "name": "TRIVANDRUM - MUMBAI LTT Netravati Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16348": {
+      "name": "Trivandrum Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16350": {
+      "name": "Nilambur Road Trivandrum Rajya Rani Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16359": {
+      "name": "ERNAKULAM - PATNA Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16360": {
+      "name": "PATNA - ERNAKULAM Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16517": {
+      "name": "Yeshvantapur-Kannur Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16518": {
+      "name": "Kannur-Yesvantpur Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16527": {
+      "name": "Yesvantpur - Kannur Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16528": {
+      "name": "Kannur - Yeshvantpur Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16603": {
+      "name": "Maveli Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16604": {
+      "name": "Maveli Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16605": {
+      "name": "Eranad Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16606": {
+      "name": "Eranad Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16627": {
+      "name": "West Coast Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16628": {
+      "name": "West Coast Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16630": {
+      "name": "Malabar Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16649": {
+      "name": "Parasuram Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16687": {
+      "name": "Navyug Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16688": {
+      "name": "Navyug Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16723": {
+      "name": "CHENNAI EGMORE - TRIVANDRUM Anantapuri Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16724": {
+      "name": "TRIVANDRUM - CHENNAI EGMORE Anantapuri Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16865": {
+      "name": "Tea Garden Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "16866": {
+      "name": "Tea Garden Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2",
+        "H1"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "17229": {
+      "name": "Sabari Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "17230": {
+      "name": "Sabari Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "18189": {
+      "name": "Tatanagar- Alappuzha (Alleppey) Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "18190": {
+      "name": "Allapuzha Dhanbad Slip Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "19259": {
+      "name": "KOCHUVELI - BHAVNAGAR Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "19260": {
+      "name": "BHAVNAGAR - KOCHUVELI Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22607": {
+      "name": "ERNAKULAM - BANGALORE Weekly SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22608": {
+      "name": "BANGALORE - ERNAKULAM Weekly SF Exp",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22609": {
+      "name": "Mangalore - Palghat Intercity Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22610": {
+      "name": "Palghat Mangalore Intercity",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "C1",
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22815": {
+      "name": "Bilaspur-Ernakulam Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "22816": {
+      "name": "Ernakulam-Bilaspur Express",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "B1",
+        "B2",
+        "B3",
+        "A1",
+        "A2"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "56043": {
+      "name": "Guruvayur Thrissur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56044": {
+      "name": "Thrissur Guruvayur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56300": {
+      "name": "Kollam Alappuzha Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56301": {
+      "name": "Alappuzha Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56302": {
+      "name": "Alappuzha Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56303": {
+      "name": "Ernakulam Alappuzha Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56304": {
+      "name": "Nagercoil Kottayam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56305": {
+      "name": "Kottayam Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56307": {
+      "name": "Kollam Tiruvananthapuram Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56308": {
+      "name": "Tiruvananthapuram Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56309": {
+      "name": "Kollam Tiruvananthapuram Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56310": {
+      "name": "Nagercoil Tiruvananthapuram Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56311": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56313": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56315": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56316": {
+      "name": "Nagercoil Tiruvananthapuram Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56317": {
+      "name": "Kochuveli Nagercoil Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56318": {
+      "name": "Nagercoil Kochuveli Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56323": {
+      "name": "Coimbatore Mangalore Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56324": {
+      "name": "Coimbatore Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56331": {
+      "name": "Punalur Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56332": {
+      "name": "Kollam Punalur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56333": {
+      "name": "Punalur Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56334": {
+      "name": "Kollam Punalur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56335": {
+      "name": "Punalur Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56336": {
+      "name": "Kollam Punalur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56337": {
+      "name": "Punalur Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56338": {
+      "name": "Kollam Punalur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56370": {
+      "name": "Ernakulam Guruvayur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56371": {
+      "name": "Guruvayur Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56373": {
+      "name": "Guruvayur Thrissur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56374": {
+      "name": "Thrissur Guruvayur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56375": {
+      "name": "Guruvayur Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56376": {
+      "name": "Ernakulam Guruvayur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56377": {
+      "name": "Allepey Kayankulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56378": {
+      "name": "Kayankulam Alappuzha Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56379": {
+      "name": "Ernakulam Alappuzha Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56380": {
+      "name": "Kayankulam Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56381": {
+      "name": "Ernakulam Kayankulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56382": {
+      "name": "Kayankulam Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56383": {
+      "name": "Ernakulam Kayankulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56384": {
+      "name": "Alappuzha Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56385": {
+      "name": "Ernakulam Kottayam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56386": {
+      "name": "Kottayam Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56387": {
+      "name": "Ernakulam Kayamkulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56389": {
+      "name": "Ernakulam Kottayam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56390": {
+      "name": "Kottayam Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56391": {
+      "name": "Ernakulam Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56392": {
+      "name": "Kollam Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56393": {
+      "name": "Kottayam Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56394": {
+      "name": "Kollam Kottayam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56600": {
+      "name": "Kozhikode Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56601": {
+      "name": "Shoranur Kozhikode Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56602": {
+      "name": "Kannur Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56603": {
+      "name": "Thrissur Kannur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56604": {
+      "name": "Shoranur Coimbatore Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56605": {
+      "name": "Coimbatore Thrissur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56606": {
+      "name": "Ernakulam Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56607": {
+      "name": "Shoranur Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56608": {
+      "name": "Ernakulam Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56609": {
+      "name": "Shoranur Ernakulam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56610": {
+      "name": "Nilambur Palakkad Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56611": {
+      "name": "Palakkad Nilambur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56612": {
+      "name": "Nilambur Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56613": {
+      "name": "Shoranur Nilambur Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56614": {
+      "name": "Nilambur Road Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56615": {
+      "name": "Shoranur Nilambur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56616": {
+      "name": "Nilambur Shoranur Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56617": {
+      "name": "Shoranur Nilambur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56618": {
+      "name": "Nilambur Shoranur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56619": {
+      "name": "Shoranur Nilambur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56620": {
+      "name": "Nilambur Road Shoranur Pass",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56621": {
+      "name": "Shoranur Nilambur Road Pass",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56650": {
+      "name": "Kannur Coimbatore Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56651": {
+      "name": "Coimbatore Kannur Fast Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56652": {
+      "name": "Kannur Kozhikkode Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56653": {
+      "name": "Kozhikode Kannur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56654": {
+      "name": "Kozhikode Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56655": {
+      "name": "Kannur Mangalore Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56656": {
+      "name": "Kannur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56657": {
+      "name": "Calicut Kannur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56659": {
+      "name": "Kannur Charvattur Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56661": {
+      "name": "Charvattur Mangalore Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56700": {
+      "name": "Madurai-Kollam Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "56701": {
+      "name": "Madurai Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "source": "Simulated coach counts inferred from historical train class flags; not a verified rake."
+    },
+    "56847": {
+      "name": "Trichy Palakkad Town Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    },
+    "56848": {
+      "name": "Palghat Town Tiruchchirapalli Passenger",
+      "rake_type": "SIMULATED",
+      "composition": [
+        "DS1",
+        "DS2",
+        "DS3",
+        "DS4"
+      ],
+      "source": "No reservable class flags in source; academic second-seating (2S) layout on this local service."
+    }
+  },
+  "calendar": {
+    "06001": {
+      "name": "Chennai Central-Kollam SF Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06002": {
+      "name": "Kollam-Chennai Central SF Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06003": {
+      "name": "Chennai Central-Kollam Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06004": {
+      "name": "Kollam-Chennai Central Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06005": {
+      "name": "Chennai Central-Kollam SF Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06006": {
+      "name": "Kollam-Chennai Central SF Special",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06007": {
+      "name": "Chennai Central-Kollam SF Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06008": {
+      "name": "KollamChennai Central SF Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06009": {
+      "name": "Chennai CentralKollam SF Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06010": {
+      "name": "KollamChennai Central SF Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06011": {
+      "name": "Chennai Central Kollam (Weekly) SF Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06012": {
+      "name": "Kollam Chennai Central (Weekly) SF Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06301": {
+      "name": "Nagercoil-Mangalore Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06302": {
+      "name": "Mangalore-Nagercoil Special",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06345": {
+      "name": "",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06346": {
+      "name": "PALGHAT TOWN - POLLACHI Passenger SPL",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06617": {
+      "name": "Coimbatore-Nagercoil Special",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "06618": {
+      "name": "Nagercoil-Coimbatore Special",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "08569": {
+      "name": "Visakhapatnam-Kollam Sabarimalai Special",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "10215": {
+      "name": "Madgaon Ernakulam Weekly Super Fast Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "10216": {
+      "name": "Ernakulam Madgaon Weekly SF Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "11097": {
+      "name": "PUNE - ERNAKULAM Poorna Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "11098": {
+      "name": "ERNAKULAM - PUNE Poorna Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12075": {
+      "name": "Kozhikode-Trivandrum Jan Shatabdi Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12076": {
+      "name": "Trivandrum-Kozhikode Jan Shatabdi Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12081": {
+      "name": "Kozhikode - Trivandrum Jan Shatabdi",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12082": {
+      "name": "Trivandrum-Kozhikode Jan Shatabdi",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12201": {
+      "name": "MUMBAI LTT - KOCHUVELI Garib Rath Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12202": {
+      "name": "KOCHUVELI - MUMBAI LTT Garib Rath Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12218": {
+      "name": "CHANDIGARH - KOCHUVELI Kerala Sampark Kranti Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12223": {
+      "name": "MUM LTT - ERNAKULAM AC Duronto",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12224": {
+      "name": "ERNAKULAM - MUM LTT AC Duronto",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12257": {
+      "name": "Yesvantapur Kochuveli Garib Rath Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12258": {
+      "name": "Kochuveli-Yesvantpur Garib Rath",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12283": {
+      "name": "ERNAKULAM - DELHI H NIZAMUDDIN Duronto Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12284": {
+      "name": "DELHI H NIZAMUDDIN - ERNAKULAM Duronto Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12287": {
+      "name": "Kochuveli-Dehradun Weekly Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12288": {
+      "name": "DEHRADUN - KOCHUVELI SF Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12431": {
+      "name": "TRIVANDRUM - DELHI H NIZAMUDDIN Rajdhani Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12432": {
+      "name": "DELHI H NIZAMUDDIN - TRIVANDRUM Rajdhani Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12483": {
+      "name": "KOCHUVELI - AMRITSAR SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12484": {
+      "name": "AMRITSAR - KOCHUVELI SF Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12507": {
+      "name": "TRIVANDRUM - GUWAHATI SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12508": {
+      "name": "GUWAHATI - TRIVANDRUM SF Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12515": {
+      "name": "RIVANDRUM - GUWAHATI Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12516": {
+      "name": "GUWAHATI - TRIVANDRUM CENTRAL EXP",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12521": {
+      "name": "Raptisagar Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12522": {
+      "name": "Raptisagar Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12601": {
+      "name": "Chennai Mangalore Mail",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12602": {
+      "name": "Chennai Mail",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12617": {
+      "name": "ERNAKULAM - NEW DELHI H NIZAMUDDIN Mangala Lakshadweep Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12618": {
+      "name": "NEW DELHI H NIZAMUDDIN - ERNAKULAM Mangala Lakshadweep Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12644": {
+      "name": "Swarna Jayanti Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12645": {
+      "name": "Millennium Expres",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12646": {
+      "name": "Millennium Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12653": {
+      "name": "Tiruchirappalli Mangalore Weekly Superfast Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12654": {
+      "name": "Mangalore Tiruchirappalli Weekly Superfast Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12659": {
+      "name": "Gurudev Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12660": {
+      "name": "Shalimar-Nagercoil Gurudev Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12677": {
+      "name": "Bangalore City - Ernakulam Intercity SF Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12678": {
+      "name": "Ernakulam-BangaloreCity Intercity Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12683": {
+      "name": "ERNAKULAM - BANGALORE SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12684": {
+      "name": "BANGALORE - ERNAKULAM SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12685": {
+      "name": "Chennai - Mangalore Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12686": {
+      "name": "Mangalore - Chennai Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12697": {
+      "name": "Chennai-Thiruvananthapuram Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12698": {
+      "name": "Thiruvananthapuram Central Chennai Central weekly express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12777": {
+      "name": "HUBLI - TRIVANDRUM KOCHUVELI SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12778": {
+      "name": "TRIVANDRUM KOCHUVELI - HUBLI SF Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12787": {
+      "name": "Bilaspur Tirunelveli SF Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12788": {
+      "name": "Tirunelveli Bilaspur SF Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12977": {
+      "name": "ERNAKULAM - AJMER Marusagar Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12978": {
+      "name": "AJMER - ERNAKULAM Marusagar Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12997": {
+      "name": "Tirunelveli - Hapa (Biweekly) SF Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "12998": {
+      "name": "Hapa-Tirunelveli Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "13351": {
+      "name": "DHANBAD - ALAPPUZHA Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "13352-Slip": {
+      "name": "Alappuzha Dhanbad Tatanagar Express Slip",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "15905": {
+      "name": "KANNIYAKUMARI - DIBRUGARH Vivek Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "15906": {
+      "name": "DIBRUGARH - KANNIYAKUMARI Vivek Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16041": {
+      "name": "Chennai- Alapuzha Alleppey Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16042": {
+      "name": "Alappuzha-Chennai Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16107": {
+      "name": "Chennai Egmore-Mangalore Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16108": {
+      "name": "Mangalore Chennai Egmore Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16128": {
+      "name": "GURUVAYUR - CHENNAI EGMORE Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16301": {
+      "name": "Venad Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16303": {
+      "name": "Vanchinad Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16304": {
+      "name": "Vanchinad Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16305": {
+      "name": "Ernakulam Kannur InterCity Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16306": {
+      "name": "Kannur Ernakulam InterCity Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16307": {
+      "name": "Executive Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16308": {
+      "name": "Executive Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16309": {
+      "name": "Ernakulam-Patna Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16310": {
+      "name": "Patna - Ernakulam Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16311": {
+      "name": "BIKANER - KOCHUVELI Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16312": {
+      "name": "KOCHUVELI - BIKANER Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16313": {
+      "name": "Executive Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16314": {
+      "name": "Executive Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16317": {
+      "name": "Himsagar Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16318": {
+      "name": "Himsagar Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16321": {
+      "name": "Bangalore Tiruvananthapuram Weekly Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16322": {
+      "name": "Tiruvananthapuram Bangalore Weekly Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16323": {
+      "name": "Trivandrum Shalimar Biweekly Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16324": {
+      "name": "Shalimar Tiruvananthapuram Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16325": {
+      "name": "Ahilyanagari Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16326": {
+      "name": "Ahilyanagari Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16328": {
+      "name": "Trivandrum-Korba Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16331": {
+      "name": "MUMBAI CST - TRIVANDRUM Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16332": {
+      "name": "TRIVANDRUM - MUMBAI CST Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16333": {
+      "name": "VERAVAL - TRIVANDRUM Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16334": {
+      "name": "TRIVANDRUM - VERAVAL Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16335": {
+      "name": "GANDHIDHAM - NAGERCOIL Weekly Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16337": {
+      "name": "OKHA - ERNAKULAM Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16338": {
+      "name": "ERNAKULAM - OKHA Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16341": {
+      "name": "Guruvayur-Ernakulam-Trivandrum Intercity Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16342": {
+      "name": "Trivandrum-Ernakulam-Guruvayur Intercity Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16345": {
+      "name": "MUMBAI LTT - TRIVANDRUM Netravati Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16346": {
+      "name": "TRIVANDRUM - MUMBAI LTT Netravati Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16348": {
+      "name": "Trivandrum Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16350": {
+      "name": "Nilambur Road Trivandrum Rajya Rani Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16359": {
+      "name": "ERNAKULAM - PATNA Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16360": {
+      "name": "PATNA - ERNAKULAM Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16517": {
+      "name": "Yeshvantapur-Kannur Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16518": {
+      "name": "Kannur-Yesvantpur Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16527": {
+      "name": "Yesvantpur - Kannur Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16528": {
+      "name": "Kannur - Yeshvantpur Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16603": {
+      "name": "Maveli Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16604": {
+      "name": "Maveli Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16605": {
+      "name": "Eranad Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16606": {
+      "name": "Eranad Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16627": {
+      "name": "West Coast Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16628": {
+      "name": "West Coast Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16630": {
+      "name": "Malabar Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16649": {
+      "name": "Parasuram Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16687": {
+      "name": "Navyug Express",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16688": {
+      "name": "Navyug Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16723": {
+      "name": "CHENNAI EGMORE - TRIVANDRUM Anantapuri Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16724": {
+      "name": "TRIVANDRUM - CHENNAI EGMORE Anantapuri Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16865": {
+      "name": "Tea Garden Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "16866": {
+      "name": "Tea Garden Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "17229": {
+      "name": "Sabari Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "17230": {
+      "name": "Sabari Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "18189": {
+      "name": "Tatanagar- Alappuzha (Alleppey) Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "18190": {
+      "name": "Allapuzha Dhanbad Slip Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "19259": {
+      "name": "KOCHUVELI - BHAVNAGAR Exp",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "19260": {
+      "name": "BHAVNAGAR - KOCHUVELI Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22607": {
+      "name": "ERNAKULAM - BANGALORE Weekly SF Exp",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22608": {
+      "name": "BANGALORE - ERNAKULAM Weekly SF Exp",
+      "runs_on": [
+        "MON",
+        "WED",
+        "FRI"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22609": {
+      "name": "Mangalore - Palghat Intercity Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22610": {
+      "name": "Palghat Mangalore Intercity",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22815": {
+      "name": "Bilaspur-Ernakulam Express",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "22816": {
+      "name": "Ernakulam-Bilaspur Express",
+      "runs_on": [
+        "TUE",
+        "THU",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56043": {
+      "name": "Guruvayur Thrissur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56044": {
+      "name": "Thrissur Guruvayur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56300": {
+      "name": "Kollam Alappuzha Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56301": {
+      "name": "Alappuzha Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56302": {
+      "name": "Alappuzha Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56303": {
+      "name": "Ernakulam Alappuzha Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56304": {
+      "name": "Nagercoil Kottayam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56305": {
+      "name": "Kottayam Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56307": {
+      "name": "Kollam Tiruvananthapuram Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56308": {
+      "name": "Tiruvananthapuram Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56309": {
+      "name": "Kollam Tiruvananthapuram Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56310": {
+      "name": "Nagercoil Tiruvananthapuram Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56311": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56313": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56315": {
+      "name": "Tiruvananthapuram Nagercoil Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56316": {
+      "name": "Nagercoil Tiruvananthapuram Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56317": {
+      "name": "Kochuveli Nagercoil Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56318": {
+      "name": "Nagercoil Kochuveli Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56323": {
+      "name": "Coimbatore Mangalore Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56324": {
+      "name": "Coimbatore Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56331": {
+      "name": "Punalur Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56332": {
+      "name": "Kollam Punalur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56333": {
+      "name": "Punalur Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56334": {
+      "name": "Kollam Punalur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56335": {
+      "name": "Punalur Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56336": {
+      "name": "Kollam Punalur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56337": {
+      "name": "Punalur Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56338": {
+      "name": "Kollam Punalur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56370": {
+      "name": "Ernakulam Guruvayur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56371": {
+      "name": "Guruvayur Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56373": {
+      "name": "Guruvayur Thrissur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56374": {
+      "name": "Thrissur Guruvayur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56375": {
+      "name": "Guruvayur Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56376": {
+      "name": "Ernakulam Guruvayur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56377": {
+      "name": "Allepey Kayankulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56378": {
+      "name": "Kayankulam Alappuzha Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56379": {
+      "name": "Ernakulam Alappuzha Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56380": {
+      "name": "Kayankulam Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56381": {
+      "name": "Ernakulam Kayankulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56382": {
+      "name": "Kayankulam Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56383": {
+      "name": "Ernakulam Kayankulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56384": {
+      "name": "Alappuzha Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56385": {
+      "name": "Ernakulam Kottayam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56386": {
+      "name": "Kottayam Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56387": {
+      "name": "Ernakulam Kayamkulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56389": {
+      "name": "Ernakulam Kottayam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56390": {
+      "name": "Kottayam Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56391": {
+      "name": "Ernakulam Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56392": {
+      "name": "Kollam Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56393": {
+      "name": "Kottayam Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56394": {
+      "name": "Kollam Kottayam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56600": {
+      "name": "Kozhikode Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56601": {
+      "name": "Shoranur Kozhikode Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56602": {
+      "name": "Kannur Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56603": {
+      "name": "Thrissur Kannur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56604": {
+      "name": "Shoranur Coimbatore Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56605": {
+      "name": "Coimbatore Thrissur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56606": {
+      "name": "Ernakulam Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56607": {
+      "name": "Shoranur Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56608": {
+      "name": "Ernakulam Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56609": {
+      "name": "Shoranur Ernakulam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56610": {
+      "name": "Nilambur Palakkad Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56611": {
+      "name": "Palakkad Nilambur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56612": {
+      "name": "Nilambur Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56613": {
+      "name": "Shoranur Nilambur Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56614": {
+      "name": "Nilambur Road Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56615": {
+      "name": "Shoranur Nilambur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56616": {
+      "name": "Nilambur Shoranur Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56617": {
+      "name": "Shoranur Nilambur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56618": {
+      "name": "Nilambur Shoranur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56619": {
+      "name": "Shoranur Nilambur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56620": {
+      "name": "Nilambur Road Shoranur Pass",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56621": {
+      "name": "Shoranur Nilambur Road Pass",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56650": {
+      "name": "Kannur Coimbatore Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56651": {
+      "name": "Coimbatore Kannur Fast Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56652": {
+      "name": "Kannur Kozhikkode Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56653": {
+      "name": "Kozhikode Kannur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56654": {
+      "name": "Kozhikode Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56655": {
+      "name": "Kannur Mangalore Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56656": {
+      "name": "Kannur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56657": {
+      "name": "Calicut Kannur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56659": {
+      "name": "Kannur Charvattur Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56661": {
+      "name": "Charvattur Mangalore Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56700": {
+      "name": "Madurai-Kollam Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56701": {
+      "name": "Madurai Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56847": {
+      "name": "Trichy Palakkad Town Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    },
+    "56848": {
+      "name": "Palghat Town Tiruchchirapalli Passenger",
+      "runs_on": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "note": "Deterministic simulated operating days; not verified live. Local passenger services assumed daily."
+    }
+  }
+}

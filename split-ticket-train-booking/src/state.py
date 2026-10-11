@@ -58,6 +58,7 @@ class UserQuery:
     #:   "any"        -- unrestricted (default): every coach switch the
     #:                   search would otherwise generate is kept.
     seat_change_tolerance: Literal["none", "short_walk", "any"] = "any"
+    region: str | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.travel_date, dt.datetime):
@@ -94,6 +95,8 @@ class Ticket:
     boarding_datetime: dt.datetime
     alighting_datetime: dt.datetime
     status: str | None = None
+    seat_numbers: tuple[int, ...] = ()
+    train_run_date: str | None = None
 
     @property
     def is_risky(self) -> bool:
@@ -134,6 +137,7 @@ class JourneyState:
     transfer_count: int
     passenger_count: int
     cumulative_time_minutes: float
+    tickets_closed: bool = False
 
     def __post_init__(self) -> None:
         # Defensive: a list here would silently make the state unhashable.

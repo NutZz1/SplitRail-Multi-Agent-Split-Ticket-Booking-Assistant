@@ -28,6 +28,7 @@ from src.search_astar import astar_search
 from src.search_bfs import bfs_search
 from src.search_ucs import ucs_search
 from src.state import UserQuery
+from src.seat_search import SeatSuccessors
 
 MAIL = "12658"          # SBC -> MAS, daily, in the pinned window
 WED = dt.date(2026, 9, 16)
@@ -97,16 +98,16 @@ def test_booking_never_improves_a_segment():
 # CRUD
 # --------------------------------------------------------------------------- #
 def test_create_then_read(booking_service, bookings):
-    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1",
+    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1",
                                    passenger_count=2, passenger_name="A Patel")
-    assert created.is_active and created.travel_class == "3A"
+    assert created.is_active and created.travel_class == "SL"
     assert bookings.get(created.id) == created
     assert [b.id for b in bookings.list(train_number=MAIL)] == [created.id]
 
 
 def test_list_filters_by_train_date_and_status(booking_service, bookings):
-    a = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1")
-    b = booking_service.book(MAIL, THU.isoformat(), "SBC", "MAS", "B1")
+    a = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    b = booking_service.book(MAIL, THU.isoformat(), "SBC", "BNC", "S1")
     assert {x.id for x in bookings.list(run_date=WED.isoformat())} == {a.id}
     assert {x.id for x in bookings.list(run_date=THU.isoformat())} == {b.id}
     bookings.cancel(a.id)
@@ -116,7 +117,7 @@ def test_list_filters_by_train_date_and_status(booking_service, bookings):
 
 
 def test_update_changes_the_booking(booking_service, bookings):
-    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=2)
+    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=2)
     updated = booking_service.rebook(created.id, passenger_count=5, passenger_name="Renamed")
     assert updated.passenger_count == 5 and updated.passenger_name == "Renamed"
     assert updated.id == created.id
@@ -124,17 +125,17 @@ def test_update_changes_the_booking(booking_service, bookings):
 
 
 def test_cancel_is_soft_and_frees_the_berths(booking_service, bookings, store):
-    capacity = store.coach_capacity(MAIL, "B1")
-    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1",
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1",
                                    passenger_count=capacity)
-    assert booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "B1") == 0
+    assert booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1") == 0
     bookings.cancel(created.id)
-    assert booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "B1") == capacity
+    assert booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1") == capacity
     assert bookings.get(created.id).status == "CANCELLED"  # row kept for the audit trail
 
 
 def test_hard_delete_removes_the_row(booking_service, bookings):
-    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1")
+    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
     assert bookings.delete(created.id) is True
     assert bookings.get(created.id) is None
     assert bookings.delete(created.id) is False  # nothing left to delete
@@ -149,11 +150,11 @@ def test_hard_delete_removes_the_row(booking_service, bookings):
     (dict(from_station="MAS", to_station="SBC"), "before"),          # wrong direction
     (dict(from_station="ZZZZ"), "does not halt"),
     (dict(coach_code="Z9"), "not in train"),
-    (dict(passenger_count=0), "at least one passenger"),
+    (dict(passenger_count=0), "between 1 and 200 passengers"),
 ])
 def test_invalid_bookings_are_refused(booking_service, kwargs, message):
     call = dict(train_number=MAIL, run_date=WED.isoformat(), from_station="SBC",
-                to_station="MAS", coach_code="B1", passenger_count=1)
+                to_station="MAS", coach_code="S1", passenger_count=1)
     call.update(kwargs)
     with pytest.raises(BookingError, match=message):
         booking_service.book(**call)
@@ -162,20 +163,20 @@ def test_invalid_bookings_are_refused(booking_service, kwargs, message):
 def test_cannot_book_a_train_that_does_not_run_that_day(booking_service):
     """12217 runs Tue/Fri; 2026-09-16 is a Wednesday."""
     with pytest.raises(BookingError, match="does not run"):
-        booking_service.book("12217", WED.isoformat(), "PURI", "CDG", "B1")
+        booking_service.book("12217", WED.isoformat(), "PURI", "CDG", "S1")
 
 
 def test_cannot_oversell_a_coach(booking_service, store):
-    capacity = store.coach_capacity(MAIL, "B1")
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=capacity - 1)
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=capacity - 1)
     with pytest.raises(BookingError, match="Only 1 berth"):
-        booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=2)
+        booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=2)
 
 
 def test_growing_a_booking_rechecks_capacity(booking_service, store):
-    capacity = store.coach_capacity(MAIL, "B1")
-    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=1)
-    with pytest.raises(BookingError, match="more berth"):
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    created = booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=1)
+    with pytest.raises(BookingError, match="berth"):
         booking_service.rebook(created.id, passenger_count=capacity + 10)
 
 
@@ -183,40 +184,39 @@ def test_growing_a_booking_rechecks_capacity(booking_service, store):
 # Per-date isolation -- the reason bookings carry a run_date
 # --------------------------------------------------------------------------- #
 def test_availability_changes_only_on_the_booked_date(booking_service, store):
-    capacity = store.coach_capacity(MAIL, "B1")
-    before_wed = store.get_availability(MAIL, "SBC", "MAS", WED.isoformat())["B1"]
-    before_thu = store.get_availability(MAIL, "SBC", "MAS", THU.isoformat())["B1"]
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    before_wed = store.get_availability(MAIL, "SBC", "MAS", WED.isoformat())["S1"]
+    before_thu = store.get_availability(MAIL, "SBC", "MAS", THU.isoformat())["S1"]
 
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=capacity)
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=capacity)
 
-    assert store.get_availability(MAIL, "SBC", "MAS", WED.isoformat())["B1"] == "UNAVAILABLE"
-    assert store.get_availability(MAIL, "SBC", "MAS", THU.isoformat())["B1"] == before_thu
+    assert store.get_availability(MAIL, "SBC", "MAS", WED.isoformat())["S1"] == "UNAVAILABLE"
+    assert store.get_availability(MAIL, "SBC", "MAS", THU.isoformat())["S1"] == before_thu
     assert before_wed != "UNAVAILABLE"
 
 
 def test_the_baseline_is_untouched_when_no_date_is_given(booking_service, store):
     """Omitting run_date returns railway.db's date-less baseline, unchanged."""
-    capacity = store.coach_capacity(MAIL, "B1")
-    baseline = store.get_availability(MAIL, "SBC", "MAS")["B1"]
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=capacity)
-    assert store.get_availability(MAIL, "SBC", "MAS")["B1"] == baseline
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    baseline = store.get_availability(MAIL, "SBC", "MAS")["S1"]
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=capacity)
+    assert store.get_availability(MAIL, "SBC", "MAS")["S1"] == baseline
 
 
 def test_a_booking_blocks_the_segments_it_spans(booking_service, store):
-    """Booked SBC -> MAS, so an intermediate leg in that coach is gone too."""
-    capacity = store.coach_capacity(MAIL, "B1")
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=capacity)
-    leg = store.get_availability(MAIL, "SBC", "BNC", WED.isoformat())
-    assert leg["B1"] == "UNAVAILABLE"
+    from src.inventory import InventoryService
+    seat = InventoryService(store).available(MAIL, WED.isoformat(), "SBC", "MAS", "S1")[0]
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", seat_numbers=[seat])
+    assert seat not in InventoryService(store).available(MAIL, WED.isoformat(), "SBC", "BNC", "S1")
 
 
 def test_get_availability_from_applies_the_same_merge(booking_service, store):
-    capacity = store.coach_capacity(MAIL, "B1")
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1", passenger_count=capacity)
+    capacity = booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1", passenger_count=capacity)
     by_destination = store.get_availability_from(MAIL, "SBC", WED.isoformat())
-    assert by_destination["MAS"]["B1"] == "UNAVAILABLE"
+    assert by_destination["MAS"]["S1"] == "UNAVAILABLE"
     untouched = store.get_availability_from(MAIL, "SBC", THU.isoformat())
-    assert untouched["MAS"]["B1"] != "UNAVAILABLE"
+    assert untouched["MAS"]["S1"] != "UNAVAILABLE"
 
 
 # --------------------------------------------------------------------------- #
@@ -228,16 +228,16 @@ def _coach_used(goal) -> str | None:
 
 def _book_out(service, store, coach: str, date: dt.date) -> None:
     service.book(MAIL, date.isoformat(), "SBC", "MAS", coach,
-                 passenger_count=store.coach_capacity(MAIL, coach))
+                 passenger_count=service.seats_remaining(MAIL, date.isoformat(), "SBC", "MAS", coach))
 
 
 @pytest.mark.parametrize("search", [
-    pytest.param(lambda q, s, h: astar_search(q, s, h)[0], id="astar"),
-    pytest.param(lambda q, s, h: ucs_search(q, s)[0], id="ucs"),
-    pytest.param(lambda q, s, h: bfs_search(q, s)[0], id="bfs"),
+    pytest.param(lambda q, s, h: astar_search(q, s, h, successors_fn=SeatSuccessors(s,q))[0], id="astar"),
+    pytest.param(lambda q, s, h: ucs_search(q, s, successors_fn=SeatSuccessors(s,q))[0], id="ucs"),
+    pytest.param(lambda q, s, h: bfs_search(q, s, successors_fn=SeatSuccessors(s,q))[0], id="bfs"),
 ])
 def test_every_algorithm_avoids_a_booked_out_coach(search, booking_service, store, heuristic):
-    query = UserQuery("SBC", "MAS", WED, max_transfers=2)
+    query = UserQuery("SBC", "MAS", WED, "SL", True, max_transfers=0)
     before = search(query, store, heuristic)
     coach = _coach_used(before)
     assert coach is not None, "expected an itinerary before booking"
@@ -250,25 +250,25 @@ def test_every_algorithm_avoids_a_booked_out_coach(search, booking_service, stor
 
 
 def test_booking_one_date_does_not_change_another(booking_service, store, heuristic):
-    wednesday = UserQuery("SBC", "MAS", WED, max_transfers=2)
-    thursday = UserQuery("SBC", "MAS", THU, max_transfers=2)
-    coach = _coach_used(astar_search(wednesday, store, heuristic)[0])
+    wednesday = UserQuery("SBC", "MAS", WED, "SL", True, max_transfers=0)
+    thursday = UserQuery("SBC", "MAS", THU, "SL", True, max_transfers=0)
+    coach = _coach_used(astar_search(wednesday, store, heuristic, successors_fn=SeatSuccessors(store,wednesday))[0])
     _book_out(booking_service, store, coach, WED)
 
-    assert _coach_used(astar_search(wednesday, store, heuristic)[0]) != coach
-    assert _coach_used(astar_search(thursday, store, heuristic)[0]) == coach
+    assert _coach_used(astar_search(wednesday, store, heuristic, successors_fn=SeatSuccessors(store,wednesday))[0]) != coach
+    assert _coach_used(astar_search(thursday, store, heuristic, successors_fn=SeatSuccessors(store,thursday))[0]) == coach
 
 
 def test_cancelling_restores_the_original_itinerary(booking_service, bookings, store, heuristic):
-    query = UserQuery("SBC", "MAS", WED, max_transfers=2)
-    original = _coach_used(astar_search(query, store, heuristic)[0])
+    query = UserQuery("SBC", "MAS", WED, "SL", True, max_transfers=0)
+    original = _coach_used(astar_search(query, store, heuristic, successors_fn=SeatSuccessors(store,query))[0])
     created = booking_service.book(
         MAIL, WED.isoformat(), "SBC", "MAS", original,
-        passenger_count=store.coach_capacity(MAIL, original),
+        passenger_count=booking_service.seats_remaining(MAIL, WED.isoformat(), "SBC", "MAS", original),
     )
-    assert _coach_used(astar_search(query, store, heuristic)[0]) != original
+    assert _coach_used(astar_search(query, store, heuristic, successors_fn=SeatSuccessors(store,query))[0]) != original
     bookings.cancel(created.id)
-    assert _coach_used(astar_search(query, store, heuristic)[0]) == original
+    assert _coach_used(astar_search(query, store, heuristic, successors_fn=SeatSuccessors(store,query))[0]) == original
 
 
 # --------------------------------------------------------------------------- #
@@ -281,7 +281,7 @@ def test_bookings_live_in_their_own_file(store, bookings):
 
 
 def test_a_read_only_bookings_store_refuses_writes(bookings, booking_service, tmp_path):
-    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "B1")
+    booking_service.book(MAIL, WED.isoformat(), "SBC", "MAS", "S1")
     with BookingStore(bookings.path, read_only=True) as reader:
         assert len(reader.list()) == 1
         with pytest.raises(sqlite3.OperationalError):

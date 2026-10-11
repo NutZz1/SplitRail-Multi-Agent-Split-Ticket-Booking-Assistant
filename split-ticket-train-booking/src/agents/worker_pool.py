@@ -6,8 +6,8 @@ Why processes and not threads
 A* over journey states is CPU-bound Python. With ``railway.db`` opened
 ``immutable=1`` (no per-query file locking) nothing in a search releases the
 GIL, so two searches in threads do not overlap at all -- measured, they run
-*slower* than back-to-back (GIL convoy effect). Two searches in two
-processes run at ~0.55-0.8x of back-to-back time.
+*slower* than back-to-back (GIL convoy effect). Two processes can overlap independent searches; measured benefit depends on
+the workload balance and excludes initial pool startup. See docs/validation.md.
 
 Each worker process opens its own read-only :class:`RailDataStore` and
 builds its own :class:`RailHeuristic` once, in the pool initializer (~1 s).
@@ -35,7 +35,7 @@ from typing import Callable
 from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.rail_graph import build_graph
-from src.search_astar import astar_search_k
+from src.seat_search import search_seats
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
 from src.successors import get_successors
@@ -61,7 +61,7 @@ def _init_worker(db_path: str, bookings_path: str | None = None) -> None:
 def _run_search(query: UserQuery, mode: str, k: int) -> tuple[list[JourneyState], SearchStats]:
     store: RailDataStore = _WORKER["store"]  # type: ignore[assignment]
     heuristic: RailHeuristic = _WORKER["heuristic"]  # type: ignore[assignment]
-    return astar_search_k(query, store, heuristic, k=k, successors_fn=SEARCH_MODES[mode])
+    return search_seats(query, store, heuristic, mode, k=k)
 
 
 class SearchWorkerPool:

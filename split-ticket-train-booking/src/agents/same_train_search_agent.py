@@ -2,8 +2,8 @@
 SameTrainSearchAgent: finds an itinerary that stays on one train, possibly
 changing coach at a long-enough halt (a "same-train split ticket").
 
-Internally it runs A* (:func:`src.search_astar.astar_search`) over the
-same-train successor function from Step 3. It exposes an ``async``
+Internally it runs A* over physical-seat ticket edges from
+:mod:`src.seat_search`. It exposes an ``async``
 interface so that a coordinator can run it alongside other agents with
 ``asyncio.gather()``.
 
@@ -12,7 +12,7 @@ Concurrency model
 ``propose()`` never blocks the event loop. With a :class:`SearchWorkerPool`
 the search runs in a worker process (its own store + heuristic), and
 several agents' ``propose()`` calls gathered together genuinely run in
-parallel -- measured at ~0.55-0.8x of back-to-back time. Without a pool the
+parallel; see docs/ablation.md for current measurements. Without a pool the
 search runs in a thread via ``asyncio.to_thread``: still non-blocking, but
 because the search is pure CPU-bound Python (the DB is opened
 ``immutable=1``, so no query releases the GIL) two threaded searches do
@@ -37,7 +37,8 @@ import asyncio
 from src.data_store import RailDataStore
 from src.heuristic import RailHeuristic
 from src.proposal import ItineraryProposal
-from src.search_astar import astar_search_k
+from src.seat_search import search_seats, operates_on_boarding_date, search_limit_reason
+from src.config import SEAT_CANDIDATES
 from src.agents.worker_pool import SearchWorkerPool
 from src.search_stats import SearchStats
 from src.state import JourneyState, UserQuery
@@ -46,7 +47,7 @@ from src.successors import MIN_COACH_SWITCH_MINUTES
 
 #: How many distinct candidate itineraries propose() returns (cheapest first).
 #: Distinctness is by leg signature (train + split stations), see src.proposal.
-K_CANDIDATES: int = 3
+K_CANDIDATES: int = SEAT_CANDIDATES
 
 
 class SameTrainSearchAgent:
@@ -79,7 +80,7 @@ class SameTrainSearchAgent:
     # -- worker-thread bodies (each opens its own DB connection) -------------
     def _search(self, query: UserQuery) -> tuple[list[JourneyState], SearchStats]:
         with self._store.clone() as store:
-            return astar_search_k(query, store, self._heuristic, k=K_CANDIDATES)
+            return search_seats(query, store, self._heuristic, "same_train", k=K_CANDIDATES)
 
     def _diagnose(self, query: UserQuery, stats: SearchStats) -> str:
         with self._store.clone() as store:
@@ -97,6 +98,8 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
     relaxed. The message names both possibilities.
     """
     origin, dest, date = query.origin_station, query.destination_station, query.travel_date.isoformat()
+    if reason := search_limit_reason(query, store, stats):
+        return reason
 
     halting = [
         tn for tn in store.get_all_trains_through_station(origin)
@@ -105,7 +108,7 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
     if not halting:
         return f"No train has a real halt at {origin}."
 
-    running = [tn for tn in halting if store.runs_on_date(tn, date)]
+    running = [tn for tn in halting if operates_on_boarding_date(store, tn, origin, query.travel_date)]
     if not running:
         return explain_no_running_train(halting, origin, query, store)
 
@@ -123,7 +126,8 @@ def diagnose_failure(query: UserQuery, store: RailDataStore, stats: SearchStats)
     if query.class_is_hard_constraint:
         offering = [
             tn for tn in reaching
-            if (t := store.get_train(tn)) is not None and query.travel_class_preference in t.classes
+            if any(store.coach_travel_class(c) == query.travel_class_preference
+                   for c in store.get_coach_composition(tn))
         ]
         if not offering:
             return (

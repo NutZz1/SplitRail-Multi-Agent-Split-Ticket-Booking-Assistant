@@ -213,10 +213,18 @@ def test_cycle_prevention(store):
 # board / continue are the same-train ones
 # --------------------------------------------------------------------------- #
 def test_board_and_continue_match_same_train_generator(store, mail_query):
+    """board_successors is reused directly from the same-train generator, so
+    every board move it offers at SBC must still appear in
+    get_successors_different_train's output. It is no longer the FULL set,
+    though: with the full real network loaded (data_source/schedules_clean.json),
+    several other real trains also halt at SBC/BNC (see
+    coach_compositions.json) and the different-train generator legitimately
+    offers boarding them too."""
     from src.state import initial_state
     from src.successors import get_successors
     start = initial_state(mail_query)
-    assert get_successors_different_train(start, mail_query, store) == get_successors(start, mail_query, store)
+    same_board, diff_board = get_successors(start, mail_query, store), get_successors_different_train(start, mail_query, store)
+    assert same_board and all(m in diff_board for m in same_board)
     boarded = get_successors(start, mail_query, store)[0]
     same = kinds(boarded, get_successors(boarded, mail_query, store))["CONTINUE"]
     diff = kinds(boarded, get_successors_different_train(boarded, mail_query, store))["CONTINUE"]

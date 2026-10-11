@@ -5,8 +5,8 @@ import argparse
 import json
 import logging
 import threading
+import uuid
 from dataclasses import asdict
-from datetime import date as date_cls
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -19,6 +19,14 @@ from src.demo_window import WINDOW_DAYS
 from src.live_cache import MISSING, live_trains_cache
 from src.live_trains import LiveLookupError, fetch_between_stations
 from src.state import SEAT_CHANGE_TOLERANCES, UserQuery
+from src.inventory import InventoryService
+from src.constraint_checks import stop_datetime
+from src.state import Ticket
+from src.fare_model import compute_fare
+from src.config import WEIGHTS, MIN_SEAT_CHANGE, MIN_TRAIN_CHANGE
+from src import config
+from src.trace import TraceRecorder
+import datetime as dt
 
 WEB = Path(__file__).parent / "web"
 # Live lookups reach a third-party site; --offline turns them off.
@@ -52,9 +60,16 @@ def search(system, payload):
     tolerance = payload.get("seat_change_tolerance", "any")
     if tolerance not in SEAT_CHANGE_TOLERANCES:
         raise ValueError(f"seat_change_tolerance must be one of {', '.join(SEAT_CHANGE_TOLERANCES)}.")
+    count = payload.get('passenger_count', 1)
+    if type(count) is not int or not 1 <= count <= 6:
+        raise ValueError("Choose between one and six passengers.")
     query = UserQuery(origin, destination, date, travel_class,
-                      travel_class is not None, transfers, 1, tolerance)
-    rec, seconds = resolve_timed(system, query)
+                      travel_class is not None, transfers, count, tolerance,
+                      region=None if config.SEARCH_REGION == 'ALL' else config.SEARCH_REGION)
+    search_id = uuid.uuid4().hex[:12]
+    trace = TraceRecorder()
+    rec, seconds = resolve_timed(system, query, trace=trace)
+    logging.info('search_completed id=%s candidates=%d seconds=%.3f', search_id, len(rec.ranked_options), seconds)
     options = []
     for i, option in enumerate(rec.ranked_options):
         candidate = option.candidate
@@ -67,8 +82,23 @@ def search(system, payload):
             # reservation landing: the count drops on the date you booked and is
             # untouched on every other date in the window.
             item["seats_remaining"], item["seats_total"] = _berths(system, ticket, date)
+            item['seat_details'] = [asdict(seat) for seat in InventoryService(system.store).seats(ticket.train_number, ticket.coach)
+                                    if seat.number in ticket.seat_numbers]
             tickets.append(item)
         options.append({"id": i, "tickets": tickets, "transfers": candidate.transfer_count,
+                        "journey_type": candidate.journey_type, "recommended": i == 0,
+                        "bookable": not option.degraded_agents and option.fare_time_score.total_fare is not None and all(t.status == 'CONFIRMED' and len(t.seat_numbers) == count for t in candidate.tickets),
+                        "passenger_count": count,
+                        "score_components": {
+                            "fare": option.final_score - (
+                                WEIGHTS['time'] * option.fare_time_score.moving_time_minutes
+                                + WEIGHTS['layover'] * option.fare_time_score.layover_minutes
+                                + WEIGHTS['transfer'] * option.transfer_score.total_feasibility_penalty
+                                + WEIGHTS['rac'] * candidate.rac_leg_count + WEIGHTS['waitlist'] * candidate.waitlist_leg_count),
+                            "moving_time": WEIGHTS['time'] * option.fare_time_score.moving_time_minutes,
+                            "layover": WEIGHTS['layover'] * option.fare_time_score.layover_minutes,
+                            "transfer": WEIGHTS['transfer'] * option.transfer_score.total_feasibility_penalty,
+                            "risk": WEIGHTS['rac'] * candidate.rac_leg_count + WEIGHTS['waitlist'] * candidate.waitlist_leg_count},
                         "risky": candidate.is_risky, "score": option.final_score,
                         "fare_imputed": option.fare_imputed,
                         "pareto_optimal": option.pareto_optimal,
@@ -76,7 +106,8 @@ def search(system, payload):
                         "degraded_agents": list(option.degraded_agents),
                         "fare": asdict(option.fare_time_score),
                         "comfort": asdict(option.transfer_score)})
-    return {"options": options, "seconds": seconds, "failure_reason": rec.failure_reason,
+    return {"search_id": search_id, "trace": [asdict(e) for e in trace.events], "weights": WEIGHTS, "options": options, "seconds": seconds, "failure_reason": rec.failure_reason,
+            "truncated": any(e.truncated for e in rec.search_effort_summary),
             "considered": rec.total_candidates_considered,
             "duplicates": rec.duplicate_candidates_merged,
             "pruned": rec.candidates_pruned_by_hard_constraint,
@@ -95,7 +126,7 @@ def _berths(system, ticket, date):
     try:
         total = system.store.coach_capacity(ticket.train_number, ticket.coach)
         remaining = system.booking_service.seats_remaining(
-            ticket.train_number, date.isoformat(),
+            ticket.train_number, ticket.train_run_date or date.isoformat(),
             ticket.from_station, ticket.to_station, ticket.coach)
     except (BookingError, ValueError):
         return None, None
@@ -168,50 +199,54 @@ def t_provider(trains):
 
 
 def direct_trains(system, payload):
-    """Every train that actually runs origin -> destination without a change.
-
-    Prefers the live timetable, which reflects services running now, and falls
-    back to the bundled 2020 snapshot whenever the live lookup fails. The
-    response says which source answered so the interface never implies the
-    local snapshot is current.
-
-    Unlike :func:`search`, neither path is limited to the six trains that have
-    simulated seat and run-date data.
-    """
+    """Every operational local direct service, sharing the booking inventory."""
     if not isinstance(payload, dict):
         raise ValueError("Please provide a journey query.")
-    origin = validate_station(str(payload.get("origin", "")), system.store)
-    destination = validate_station(str(payload.get("destination", "")), system.store)
+    origin = validate_station(str(payload.get('origin', '')), system.store)
+    destination = validate_station(str(payload.get('destination', '')), system.store)
     if origin == destination:
         raise ValueError("Choose two different stations for your journey.")
-
-    # Parsed directly rather than via parse_date(): that helper also enforces
-    # the demo run-date window, which exists only because the simulated
-    # availability data covers those days. Live running-days work for any date.
-    when, raw_date = None, str(payload.get("date", "")).strip()
-    if raw_date:
-        try:
-            when = date_cls.fromisoformat(raw_date)
-        except ValueError:
-            raise ValueError("Enter the travel date as YYYY-MM-DD.") from None
-
-    if LIVE_LOOKUPS:
-        try:
-            trains, other_days, provider = _live_direct(origin, destination, when)
-            return {"trains": trains, "source": "live", "provider": provider,
-                    "notice": None, "other_days": other_days,
-                    "origin": origin, "destination": destination}
-        except LiveLookupError as exc:
-            notice = str(exc)
-        except Exception:
-            logging.exception("Live timetable lookup failed")
-            notice = "The live timetable could not be read."
-    else:
-        notice = None
-
-    return {"trains": _local_direct(system, origin, destination), "source": "local",
-            "provider": "bundled timetable", "notice": notice, "other_days": 0,
-            "origin": origin, "destination": destination}
+    when = parse_date(str(payload.get('date', '')), system.store)
+    inventory = InventoryService(system.store)
+    trains = []
+    count = payload.get('passenger_count', 1)
+    if type(count) is not int or not 1 <= count <= 6:
+        raise ValueError("Choose between one and six passengers.")
+    wanted = parse_class(str(payload.get('travel_class', '')))
+    for direct in system.store.get_direct_trains(origin, destination):
+        train = direct.train_number
+        if train not in system.store.get_demo_train_numbers():
+            continue
+        stops = {s.station_code: s for s in inventory.route(train)}
+        run = when - dt.timedelta(days=(stops[origin].journey_day or 1)-1)
+        if not inventory.operates(train, run):
+            continue
+        departure = stop_datetime(stops[origin], run, use_arrival=False)
+        arrival = stop_datetime(stops[destination], run, use_arrival=True)
+        if not departure or not arrival or arrival <= departure:
+            continue
+        classes = {}
+        for coach in inventory.coaches(train):
+            cls = system.store.coach_travel_class(coach)
+            if wanted and wanted != cls:
+                continue
+            snap = inventory.snapshot(train, run.isoformat(), origin, destination, coach, count)
+            t = Ticket(train, origin, destination, coach, cls, departure, arrival, snap['status'], snap['seat_numbers'], run.isoformat())
+            entry = dict(snap, **{'class': cls, 'coach': coach, 'fare': compute_fare(t, system.store, count),
+                                 'kind': {'CONFIRMED':'available','RAC':'rac','WAITLIST':'waitlist','UNAVAILABLE':'regret'}[snap['status']]})
+            priority = {'CONFIRMED':0,'RAC':1,'WAITLIST':2,'UNAVAILABLE':3}
+            if cls not in classes or priority[entry['status']] < priority[classes[cls]['status']]:
+                classes[cls] = entry
+        trains.append({'train_number': train, 'train_name': direct.train_name,
+                       'from_code': origin, 'to_code': destination,
+                       'departure': departure.strftime('%H:%M'), 'arrival': arrival.strftime('%H:%M'),
+                       'day_offset': (arrival.date()-departure.date()).days,
+                       'duration_minutes': (arrival-departure).total_seconds()/60,
+                       'train_run_date': run.isoformat(), 'halts': direct.stops_between,
+                       'running_days': system.store.get_run_pattern(train), 'classes': list(classes.values())})
+    return {'trains': trains, 'source': 'local', 'provider': 'Operational local timetable',
+            'notice': 'Historical local schedules; deterministic simulated seats. No live railway booking.',
+            'other_days': 0, 'origin': origin, 'destination': destination}
 
 
 # --------------------------------------------------------------------------- #
@@ -225,12 +260,22 @@ def direct_trains(system, payload):
 def meta(system):
     """Station list, the rolling booking window, and how many trains are covered."""
     window = system.store.get_window()
-    return {"stations": [{"code": code, "name": name}
-                         for code, name in system.store.get_bookable_stations()],
+    stations = (system.store.get_bookable_stations() if config.SEARCH_REGION == 'ALL'
+                else system.store.get_region_stations(config.SEARCH_REGION))
+    covered = system.store.get_operational_station_codes()
+    trains = (system.store.get_demo_train_numbers() if config.SEARCH_REGION == 'ALL'
+              else system.store.get_region_train_numbers(config.SEARCH_REGION))
+    return {"stations": [{"code": code, "name": name, 'bookable': code in covered,
+                           'coverage_note': None if code in covered else 'Halt timetable data unavailable'}
+                         for code, name in stations],
+            'region': config.SEARCH_REGION, 'station_count': len(stations),
+            'covered_station_count': sum(code in covered for code, _ in stations),
             "dates": system.store.get_run_date_range(),
             "window": {"start": window[0], "end": window[1]} if window else None,
             "window_days": WINDOW_DAYS,
-            "trains": len(system.store.get_demo_train_numbers())}
+            "min_seat_change_minutes": MIN_SEAT_CHANGE,
+            "min_train_change_minutes": MIN_TRAIN_CHANGE,
+            "trains": len(trains)}
 
 
 def _booking_json(booking):
@@ -240,7 +285,10 @@ def _booking_json(booking):
             "travel_class": booking.travel_class,
             "passenger_count": booking.passenger_count,
             "passenger_name": booking.passenger_name, "status": booking.status,
-            "created_at": booking.created_at}
+            "created_at": booking.created_at, "seat_numbers": booking.seat_numbers,
+            "reference": booking.journey_id or 'SIM-' + booking.id,
+            "fare": booking.fare, "departure": booking.departure, "arrival": booking.arrival,
+            "disclaimer": "SIMULATED BOOKING — NOT A REAL RAILWAY TICKET"}
 
 
 def list_bookings(system, params):
@@ -282,6 +330,8 @@ def create_booking(system, payload):
     if type(count) is not int or not 1 <= count <= 200:
         raise ValueError("Choose between one and two hundred passengers.")
     name = str(payload.get("passenger_name", "") or "").strip()[:120] or None
+    validate_station(str(payload.get('from_station', '')), system.store)
+    validate_station(str(payload.get('to_station', '')), system.store)
     booking = system.booking_service.book(
         train_number=str(payload.get("train_number", "")),
         run_date=str(payload.get("run_date", "")),
@@ -290,45 +340,29 @@ def create_booking(system, payload):
         coach_code=str(payload.get("coach_code", "")),
         passenger_count=count,
         passenger_name=name,
+        seat_numbers=payload.get("seat_numbers"),
     )
     return {"booking": _booking_json(booking)}
 
 
 def book_itinerary(system, payload):
-    """Reserve every leg of one ranked itinerary in a single call.
-
-    The interface books a whole journey, not a leg: a split itinerary is only
-    useful if both of its tickets exist. If a later leg cannot be reserved the
-    earlier ones are cancelled again, so a half-booked journey is never left
-    behind -- the closest a demo gets to a transaction across legs.
-    """
     if not isinstance(payload, dict):
         raise ValueError("Please provide an itinerary.")
-    legs = payload.get("legs")
-    if not isinstance(legs, list) or not 1 <= len(legs) <= 4:
-        raise ValueError("An itinerary needs between one and four legs.")
-    run_date = str(payload.get("run_date", ""))
-    name = str(payload.get("passenger_name", "") or "").strip()[:120] or None
-
-    made = []
-    try:
-        for leg in legs:
-            if not isinstance(leg, dict):
-                raise ValueError("Each leg must describe a train, coach and stations.")
-            made.append(system.booking_service.book(
-                train_number=str(leg.get("train_number", "")),
-                run_date=run_date,
-                from_station=str(leg.get("from_station", "")),
-                to_station=str(leg.get("to_station", "")),
-                coach_code=str(leg.get("coach", "") or ""),
-                passenger_count=1,
-                passenger_name=name,
-            ))
-    except (BookingError, ValueError):
-        for booking in made:  # roll back, so no partial journey survives
-            system.bookings.cancel(booking.id)
-        raise
-    return {"bookings": [_booking_json(b) for b in made]}
+    legs = payload.get('legs')
+    if not isinstance(legs, list) or any(not isinstance(leg, dict) for leg in legs):
+        raise ValueError("Please provide structured journey legs.")
+    legs = [{**leg, 'train_run_date': leg.get('train_run_date', payload.get('run_date', ''))} for leg in legs]
+    for leg in legs:
+        validate_station(str(leg.get('from_station', '')), system.store)
+        validate_station(str(leg.get('to_station', '')), system.store)
+    count = payload.get('passenger_count', 1)
+    if type(count) is not int or not 1 <= count <= 6:
+        raise ValueError("Choose between one and six passengers.")
+    name = str(payload.get('passenger_name') or '').strip()[:120] or None
+    made = system.booking_service.book_itinerary(legs, passenger_count=count, passenger_name=name)
+    return {'bookings': [_booking_json(b) for b in made], 'reference': made[0].journey_id,
+            'total_fare': round(sum(b.fare or 0 for b in made), 2),
+            'disclaimer': 'SIMULATED BOOKING — NOT A REAL RAILWAY TICKET'}
 
 
 def update_booking(system, booking_id, payload):
@@ -408,7 +442,7 @@ def make_handler(system):
 
         def do_GET(self):
             parsed = urlparse(self.path)
-            path, params = parsed.path, parse_qs(parsed.query)
+            path, params = parsed.path, parse_qs(parsed.query, keep_blank_values=True)
             if path == "/api/meta":
                 return self._run(lambda: meta(system))
             if path == "/api/bookings":
@@ -458,17 +492,19 @@ def _booking_id(path: str) -> str | None:
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--db", default=None, help="reference database path (bookings use SPLIT_TICKET_BOOKINGS_DB)")
     parser.add_argument("--offline", action="store_true",
-                        help="skip live erail.in lookups and use the bundled timetable only")
+                        help="compatibility flag; booking searches always use the local timetable")
     args = parser.parse_args()
     global LIVE_LOOKUPS
     LIVE_LOOKUPS = not args.offline
     # Builds on first run; also rebuilds when the 10-day booking window has
     # rolled past, so the demo keeps working without anyone regenerating data.
-    ensure_database()
-    system = build_system(use_pool=False)
+    database = ensure_database(args.db)
+    system = build_system(database, use_pool=True)
     try:
         # Threaded on purpose. With the single-threaded HTTPServer, a browser
         # that opens a speculative connection without sending a request (Chrome

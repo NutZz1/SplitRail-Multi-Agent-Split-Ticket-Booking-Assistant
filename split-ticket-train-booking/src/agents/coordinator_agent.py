@@ -92,24 +92,25 @@ from src.final_recommendation import FinalRecommendation, RankedItinerary, Searc
 from src.proposal import CandidateItinerary, ItineraryProposal
 from src.state import UserQuery
 from src.trace import TraceRecorder
+from src.config import WEIGHTS
 
 logger = logging.getLogger(__name__)
 
 #: Rs per minute of moving time (value of time, see module docstring).
-W_TIME: float = 2.0
+W_TIME: float = WEIGHTS["time"]
 #: Rs per Rs of fare.
-W_FARE: float = 1.0
+W_FARE: float = WEIGHTS["fare"]
 #: Rs per minute-equivalent of transfer inconvenience (same unit as time).
-W_TRANSFER: float = 2.0
+W_TRANSFER: float = WEIGHTS["transfer"]
 #: Rs per minute of layover / dwell (half the moving-minute rate).
-W_LAYOVER: float = 1.0
+W_LAYOVER: float = WEIGHTS["layover"]
 #: Rs-equivalent penalty per RAC leg: a berth is shared until someone
 #: cancels, but boarding is guaranteed. At the Rs 2/minute value of time this
 #: says a confirmed berth is worth about twenty minutes of journey per leg --
 #: between a daytime platform change (Rs 40) and the night coach switch at
 #: BNC (Rs 104), which is the honest reading of "you will travel, but not
 #: comfortably".
-W_RAC: float = 40.0
+W_RAC: float = WEIGHTS["rac"]
 
 #: Rs-equivalent penalty per WAITLIST leg. Materially worse than RAC: the
 #: passenger may not board at all, and an itinerary that strands them halfway
@@ -117,7 +118,7 @@ W_RAC: float = 40.0
 #: leg loses to any confirmed alternative that is not dramatically slower or
 #: dearer, while still being a soft penalty rather than a hard exclusion --
 #: a waitlisted journey is better than no journey.
-W_WAITLIST: float = 110.0
+W_WAITLIST: float = WEIGHTS["waitlist"]
 
 #: Back-compatible average, used only by callers that still price a single
 #: undifferentiated "risky leg" count.
@@ -237,7 +238,9 @@ class CoordinatorAgent:
             if isinstance(result, BaseException):
                 logger.warning("%s.evaluate() failed for a %s candidate: %r",
                                self._seat.name, c.agent_name, result)
-                transfer_scores.append(TransferFeasibilityScore.not_applicable(c.agent_name))
+                # An evaluator failure must not make a connection look free.
+                transfer_scores.append(TransferFeasibilityScore(
+                    c.agent_name, False, (), 100.0 * c.transfer_count))
                 degraded_agents[i] = (*degraded_agents[i], self._seat.name)
             else:
                 transfer_scores.append(result)
@@ -246,7 +249,10 @@ class CoordinatorAgent:
             if isinstance(result, BaseException):
                 logger.warning("%s.evaluate() failed for a %s candidate: %r",
                                self._fare.name, c.agent_name, result)
-                fare_scores.append(FareTimeScore.not_applicable(c.agent_name))
+                wall = (c.tickets[-1].alighting_datetime - c.tickets[0].boarding_datetime).total_seconds() / 60
+                moving = float(c.total_time_minutes)
+                fare_scores.append(FareTimeScore(c.agent_name, False, None, moving, wall,
+                                                  max(0.0, wall - moving), passengers=c.passenger_count))
                 degraded_agents[i] = (*degraded_agents[i], self._fare.name)
             else:
                 fare_scores.append(result)
@@ -308,8 +314,16 @@ def passes_hard_constraints(c: CandidateItinerary, query: UserQuery, store: Rail
     if c.transfer_count > query.max_transfers:
         return False
     if store is not None:
+        if query.region:
+            for t in c.tickets:
+                for code in (t.from_station, t.to_station):
+                    station = store.get_station(code)
+                    if station is None or (station.state or '').lower() != query.region.lower():
+                        return False
         date = query.travel_date.isoformat()
-        if any(not store.runs_on_date(t.train_number, date) for t in c.tickets):
+        if any((__import__('datetime').date.fromisoformat(t.train_run_date).strftime('%a').upper()
+                not in store.get_run_pattern(t.train_number)) if t.train_run_date
+               else not store.runs_on_date(t.train_number, date) for t in c.tickets):
             return False
     return True
 
@@ -324,7 +338,9 @@ def same_train_query(query: UserQuery) -> UserQuery:
 
 def search_effort(*proposals: ItineraryProposal) -> tuple[SearchEffort, ...]:
     """Passthrough of each Stage-1 proposal's existing SearchStats; nothing is recomputed."""
-    return tuple(SearchEffort(p.agent_name, p.search_stats.nodes_expanded, p.found) for p in proposals)
+    return tuple(SearchEffort(p.agent_name, p.search_stats.nodes_expanded, p.found,
+                              p.search_stats.wall_clock_seconds, p.search_stats.truncated,
+                              p.search_stats.seat_checks, p.search_stats.rejections) for p in proposals)
 
 
 def dedupe_across_agents(candidates: list[CandidateItinerary]) -> list[CandidateItinerary]:
@@ -409,12 +425,13 @@ def rank_candidates(
     # the passenger never sees; pareto_front() ADDS a view of every option
     # that is the best answer for SOME honest ordering of the four
     # objectives, without changing the weighted ranking itself.
-    on_front = {id(r) for r in pareto_front(ranked)}
+    on_front = {id(r) for r in pareto_front([r for r in ranked if not r.degraded_agents])}
     ranked = [replace(r, pareto_optimal=id(r) in on_front) for r in ranked]
 
     def sort_key(r: RankedItinerary) -> tuple:
         f = r.fare_time_score
         return (
+            bool(r.degraded_agents),                  # missing evaluation cannot beat complete evidence
             round(r.final_score / SCORE_EPSILON),        # scores within epsilon compare equal
             r.candidate.transfer_count,
             f.total_fare if f.total_fare is not None else float("inf"),

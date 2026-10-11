@@ -20,13 +20,15 @@ pop time here keeps ``nodes_expanded`` directly comparable across the three.)
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.state import JourneyState
 
 
 @dataclass
 class SearchStats:
+    seat_checks: int = 0
+    rejections: dict[str, int] = field(default_factory=dict)
     nodes_expanded: int = 0
     nodes_generated: int = 0
     max_frontier_size: int = 0
@@ -35,6 +37,7 @@ class SearchStats:
     total_cost: float | None = None
     wall_clock_seconds: float = 0.0
     algorithm: str = ""
+    truncated: bool = False
 
     # -- helpers used identically by every algorithm ------------------------
     def note_frontier(self, size: int) -> None:
