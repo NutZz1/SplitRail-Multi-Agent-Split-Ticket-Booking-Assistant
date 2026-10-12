@@ -18,6 +18,397 @@ const seatLabel = ticket => ticket.seat_numbers?.length ? `Seat ${ticket.seat_nu
 /** Berths left in this coach ON THIS DATE. Reserving moves it; other dates don't. */
 const berths = ticket => ticket.seats_remaining == null ? 'Berth count unavailable for this coach'
   : `${ticket.seats_remaining} of ${ticket.seats_total} berths free in ${escapeHTML(ticket.coach)} on this date`;
+
+function getBerthDetails(num, travelClass) {
+  const cls = (travelClass || 'SL').toUpperCase();
+  if (cls === 'SL' || cls === '3A') {
+    const baySize = 8;
+    const bay = Math.floor((num - 1) / baySize) + 1;
+    const pos = (num - 1) % baySize;
+    const types = ['LB', 'MB', 'UB', 'LB', 'MB', 'UB', 'SL', 'SU'];
+    const names = ['Lower Berth', 'Middle Berth', 'Upper Berth', 'Lower Berth', 'Middle Berth', 'Upper Berth', 'Side Lower', 'Side Upper'];
+    const levels = ['▼ Floor Level', '― Middle Bunk', '▲ Top Bunk', '▼ Floor Level', '― Middle Bunk', '▲ Top Bunk', '▼ Side Window', '▲ Top Side'];
+    const levelClasses = ['level-lb', 'level-mb', 'level-ub', 'level-lb', 'level-mb', 'level-ub', 'level-sl', 'level-su'];
+    return { bay, pos, type: types[pos] || 'Berth', name: names[pos] || 'Berth', level: levels[pos] || '', levelClass: levelClasses[pos] || 'level-lb', isSide: pos >= 6 };
+  } else if (cls === '2A') {
+    const baySize = 6;
+    const bay = Math.floor((num - 1) / baySize) + 1;
+    const pos = (num - 1) % baySize;
+    const types = ['LB', 'UB', 'LB', 'UB', 'SL', 'SU'];
+    const names = ['Lower Berth', 'Upper Berth', 'Lower Berth', 'Upper Berth', 'Side Lower', 'Side Upper'];
+    const levels = ['▼ Floor Level', '▲ Top Bunk', '▼ Floor Level', '▲ Top Bunk', '▼ Side Window', '▲ Top Side'];
+    const levelClasses = ['level-lb', 'level-ub', 'level-lb', 'level-ub', 'level-sl', 'level-su'];
+    return { bay, pos, type: types[pos] || 'Berth', name: names[pos] || 'Berth', level: levels[pos] || '', levelClass: levelClasses[pos] || 'level-lb', isSide: pos >= 4 };
+  } else if (cls === '1A') {
+    let bay, pos, isCoupe;
+    if (num <= 16) {
+      bay = Math.floor((num - 1) / 4) + 1;
+      pos = (num - 1) % 4;
+      isCoupe = false;
+    } else {
+      bay = 4 + Math.floor((num - 17) / 2) + 1;
+      pos = (num - 17) % 2;
+      isCoupe = true;
+    }
+    const types = ['LB', 'UB', 'LB', 'UB'];
+    const names = ['Lower Berth', 'Upper Berth', 'Lower Berth', 'Upper Berth'];
+    const levels = ['▼ Floor Level (First Class)', '▲ Top Bunk (First Class)', '▼ Floor Level (First Class)', '▲ Top Bunk (First Class)'];
+    return { bay, pos, type: types[pos] || 'LB', name: names[pos] || 'Lower Berth', level: levels[pos] || '', levelClass: pos % 2 === 0 ? 'level-lb' : 'level-ub', isSide: false, isCoupe };
+  } else if (cls === 'CC' || cls === '2S' || cls === 'EC') {
+    const isEC = (cls === 'EC');
+    const rowSize = isEC ? 4 : 5;
+    const bay = Math.floor((num - 1) / rowSize) + 1;
+    const pos = (num - 1) % rowSize;
+    let type, name, posClass, level;
+    if (isEC) {
+      const types = ['W', 'A', 'A', 'W'];
+      const names = ['Window Seat', 'Aisle Seat', 'Aisle Seat', 'Window Seat'];
+      const classes = ['pos-window', 'pos-aisle', 'pos-aisle', 'pos-window'];
+      type = types[pos]; name = names[pos]; posClass = classes[pos];
+      level = type === 'W' ? '🪟 Window' : '🚶 Aisle';
+    } else {
+      const types = ['W', 'M', 'A', 'A', 'W'];
+      const names = ['Window Seat', 'Middle Seat', 'Aisle Seat', 'Aisle Seat', 'Window Seat'];
+      const classes = ['pos-window', 'pos-middle', 'pos-aisle', 'pos-aisle', 'pos-window'];
+      type = types[pos]; name = names[pos]; posClass = classes[pos];
+      level = type === 'W' ? '🪟 Window' : type === 'A' ? '🚶 Aisle' : '👤 Middle';
+    }
+    return { bay, pos, type, name, level, levelClass: posClass, isSide: pos >= 3 };
+  }
+  return { bay: Math.floor((num - 1) / 4) + 1, pos: (num - 1) % 4, type: 'Berth', name: 'Berth', level: 'Floor Level', levelClass: 'level-lb', isSide: false };
+}
+
+function renderBogie(coach, travelClass, seatNumbers, trainNumber) {
+  const cls = (travelClass || 'SL').toUpperCase();
+  const seatsList = (seatNumbers || []).map(Number);
+  const assigned = new Set(seatsList);
+  const firstSeat = seatsList.length ? seatsList[0] : 1;
+  const activeInfo = getBerthDetails(firstSeat, cls);
+  const activeBay = activeInfo.bay;
+
+  let themeClass = 'theme-sl';
+  let classNameFull = 'Sleeper Class (SL)';
+  let totalBays = 9;
+  let baySize = 8;
+  let layoutExplainer = 'Standard 8-Berth Bay: 6 Main berths (Lower, Middle, Upper facing) + 2 Side berths (Side Lower, Side Upper) across the walking aisle.';
+  let bayTabPrefix = 'Bay';
+
+  if (cls === 'SL') {
+    themeClass = 'theme-sl';
+    classNameFull = 'Sleeper Class (SL)';
+    totalBays = 9;
+    baySize = 8;
+    layoutExplainer = 'Classic Sleeper Bay (8 Berths): 6 Main Berths (3 on left, 3 facing on right) with window & table + 2 Side Berths across the aisle.';
+  } else if (cls === '3A') {
+    themeClass = 'theme-3a';
+    classNameFull = 'AC 3 Tier (3A)';
+    totalBays = 8;
+    baySize = 8;
+    layoutExplainer = 'Air-Conditioned 3-Tier (8 Berths): 6 Main Berths (Lower, Middle, Upper facing) + 2 Side Berths across the aisle, with AC vents & clean linen.';
+  } else if (cls === '2A') {
+    themeClass = 'theme-2a';
+    classNameFull = 'AC 2 Tier (2A)';
+    totalBays = 8;
+    baySize = 6;
+    layoutExplainer = 'Spacious AC 2-Tier (6 Berths): 4 Main Berths (Lower & Upper only — NO Middle Berths!) + 2 Side Berths for extra headroom and comfort.';
+  } else if (cls === '1A') {
+    themeClass = 'theme-1a';
+    classNameFull = 'AC First Class (1A)';
+    totalBays = 6;
+    baySize = 4;
+    bayTabPrefix = 'Cabin';
+    layoutExplainer = 'Exclusive First AC: Private lockable Cabins (4 Berths: 2 Lower + 2 Upper) & Coupes (2 Berths) with sliding doors opening into a carpeted corridor.';
+  } else if (cls === 'CC') {
+    themeClass = 'theme-cc';
+    classNameFull = 'AC Chair Car (CC)';
+    totalBays = 15;
+    baySize = 5;
+    bayTabPrefix = 'Row';
+    layoutExplainer = 'High-Speed Intercity Seating (3 + 2): 3 ergonomic reclining seats on the left (Window, Middle, Aisle), central walkway, and 2 seats on the right.';
+  } else if (cls === '2S') {
+    themeClass = 'theme-2s';
+    classNameFull = 'Second Sitting (2S)';
+    totalBays = 20;
+    baySize = 5;
+    bayTabPrefix = 'Row';
+    layoutExplainer = 'Second Sitting (3 + 2): 3 seats on the left, central walking aisle, and 2 seats on the right.';
+  } else if (cls === 'EC') {
+    themeClass = 'theme-cc';
+    classNameFull = 'Executive Chair Car (EC)';
+    totalBays = 12;
+    baySize = 4;
+    bayTabPrefix = 'Row';
+    layoutExplainer = 'Executive Class (2 + 2): Extra-wide plush leatherette recliners with generous legroom and personal armrests.';
+  }
+  totalBays = Math.max(totalBays, activeBay);
+
+  let bayTabs = '';
+  for (let b = 1; b <= totalBays; b++) {
+    let tabLabel = `${bayTabPrefix} ${b}`;
+    if (cls === '1A') {
+      tabLabel = b <= 4 ? `Cabin ${String.fromCharCode(64 + b)}` : `Coupe ${String.fromCharCode(64 + b)}`;
+    }
+    let hasAssigned = false;
+    if (cls === '1A') {
+      hasAssigned = seatsList.some(s => getBerthDetails(s, cls).bay === b);
+    } else {
+      const bStart = (b - 1) * baySize + 1;
+      const bEnd = b * baySize;
+      hasAssigned = seatsList.some(s => s >= bStart && s <= bEnd);
+    }
+    bayTabs += `<button type="button" class="bogie-bay-tab ${b === activeBay ? 'active' : ''} ${hasAssigned ? 'has-assigned' : ''}" data-bay="${b}">${hasAssigned ? '★ ' : ''}${tabLabel}</button>`;
+  }
+
+  const renderBerthCard = (num, forcedType) => {
+    const info = getBerthDetails(num, cls);
+    const isAssigned = assigned.has(num);
+    const type = forcedType || info.type;
+    return `
+      <div class="bogie-berth-card ${isAssigned ? 'is-assigned' : ''}" title="Seat ${num} · ${info.name}">
+        <div class="berth-pillow"></div>
+        <div class="berth-num-row">
+          <span class="berth-number">${num}</span>
+          ${isAssigned ? '<span style="color:#f59e0b;font-size:11px;">★</span>' : ''}
+        </div>
+        <span class="berth-type-pill ${info.levelClass}">${type}</span>
+        <span class="berth-level-text">${info.level}</span>
+        ${isAssigned ? '<span class="you-badge">★ YOU</span>' : ''}
+      </div>`;
+  };
+
+  const renderChairSeat = (num, posType) => {
+    const isAssigned = assigned.has(num);
+    const info = getBerthDetails(num, cls);
+    const posClass = posType === 'W' ? 'pos-window' : posType === 'A' ? 'pos-aisle' : 'pos-middle';
+    const posLabel = posType === 'W' ? 'WINDOW' : posType === 'A' ? 'AISLE' : 'MIDDLE';
+    return `
+      <div class="bogie-chair-seat ${isAssigned ? 'is-assigned' : ''}" title="Seat ${num} (${info.name})">
+        <div class="chair-headrest"></div>
+        <span class="chair-num">${num}</span>
+        <span class="chair-pos-pill ${posClass}">${posLabel}</span>
+        ${isAssigned ? '<span class="you-badge" style="background:#f59e0b;color:#0f172a;font-size:7px;font-weight:900;padding:1px 3px;border-radius:2px;margin-top:2px;">★ YOU</span>' : ''}
+      </div>`;
+  };
+
+  let bayViews = '';
+  for (let b = 1; b <= totalBays; b++) {
+    const isVisible = (b === activeBay);
+    let bayContent = '';
+
+    if (cls === 'SL' || cls === '3A') {
+      const start = (b - 1) * 8 + 1;
+      const bayHasAssigned = seatsList.some(s => s >= start && s <= start + 7);
+      bayContent = `
+        <div class="bogie-bay-title">
+          <span class="bay-name">🚆 Bay ${b} (Berths ${start}–${start + 7})</span>
+          ${bayHasAssigned ? `<span class="allocated-callout">★ Your Seat: #${seatsList.filter(s => s >= start && s <= start + 7).join(', ')} (${activeInfo.name})</span>` : ''}
+        </div>
+        <div class="bogie-compartment-layout">
+          <div class="main-compartment">
+            <div class="window-ledge">
+              <span class="window-glass">🪟 Panoramic Bay Window</span>
+              <span class="compartment-table">🍱 Snack Table</span>
+            </div>
+            <div class="bench-row">
+              ${renderBerthCard(start, 'LB')}
+              ${renderBerthCard(start + 1, 'MB')}
+              ${renderBerthCard(start + 2, 'UB')}
+            </div>
+            <div class="facing-divider">Facing Berths</div>
+            <div class="bench-row">
+              ${renderBerthCard(start + 3, 'LB')}
+              ${renderBerthCard(start + 4, 'MB')}
+              ${renderBerthCard(start + 5, 'UB')}
+            </div>
+          </div>
+          <div class="aisle-walkway">
+            <span>🚶</span>
+            <span class="aisle-text">AISLE CORRIDOR</span>
+            <span>🚶</span>
+          </div>
+          <div class="side-compartment">
+            <div class="side-window-ledge">🪟 Side Window</div>
+            <div class="side-berths-stack">
+              ${renderBerthCard(start + 6, 'SL')}
+              ${renderBerthCard(start + 7, 'SU')}
+            </div>
+          </div>
+        </div>`;
+    } else if (cls === '2A') {
+      const start = (b - 1) * 6 + 1;
+      const bayHasAssigned = seatsList.some(s => s >= start && s <= start + 5);
+      bayContent = `
+        <div class="bogie-bay-title">
+          <span class="bay-name">🚆 Bay ${b} (Berths ${start}–${start + 5})</span>
+          ${bayHasAssigned ? `<span class="allocated-callout">★ Your Seat: #${seatsList.filter(s => s >= start && s <= start + 5).join(', ')} (${activeInfo.name})</span>` : ''}
+        </div>
+        <div class="bogie-compartment-layout">
+          <div class="main-compartment">
+            <div class="window-ledge">
+              <span class="window-glass">🪟 Wide Bay Window</span>
+              <span class="compartment-table">🍱 Table · 帘 Curtains</span>
+            </div>
+            <div class="bench-row two-berths">
+              ${renderBerthCard(start, 'LB')}
+              ${renderBerthCard(start + 1, 'UB')}
+            </div>
+            <div class="facing-divider">Spacious Facing Berths (No Middle Bunks)</div>
+            <div class="bench-row two-berths">
+              ${renderBerthCard(start + 2, 'LB')}
+              ${renderBerthCard(start + 3, 'UB')}
+            </div>
+          </div>
+          <div class="aisle-walkway">
+            <span>🚶</span>
+            <span class="aisle-text">AISLE PASSAGE</span>
+            <span>🚶</span>
+          </div>
+          <div class="side-compartment">
+            <div class="side-window-ledge">🪟 Side Window</div>
+            <div class="side-berths-stack">
+              ${renderBerthCard(start + 4, 'SL')}
+              ${renderBerthCard(start + 5, 'SU')}
+            </div>
+          </div>
+        </div>`;
+    } else if (cls === '1A') {
+      const isCabin = (b <= 4);
+      const start = isCabin ? (b - 1) * 4 + 1 : 16 + (b - 5) * 2 + 1;
+      const end = isCabin ? start + 3 : start + 1;
+      const cabinLetter = String.fromCharCode(64 + b);
+      const bayHasAssigned = seatsList.some(s => s >= start && s <= end);
+      bayContent = `
+        <div class="bogie-bay-title">
+          <span class="bay-name">⭐ ${isCabin ? `Cabin ${cabinLetter} (4 Berths)` : `Coupe ${cabinLetter} (2 Berths)`}</span>
+          ${bayHasAssigned ? `<span class="allocated-callout">★ Your Seat: #${seatsList.filter(s => s >= start && s <= end).join(', ')} (${activeInfo.name})</span>` : ''}
+        </div>
+        <div class="bogie-1ac-layout">
+          <div class="cabin-1ac-room">
+            <div class="cabin-1ac-header">
+              <span>${isCabin ? `🗝️ Private Lockable Cabin ${cabinLetter}` : `🗝️ Private Coupe Suite ${cabinLetter}`}</span>
+              <span>🪞 Vanity Basin · 🪟 Scenic Observation Window</span>
+            </div>
+            <div class="bench-row two-berths">
+              ${renderBerthCard(start, 'LB')}
+              ${renderBerthCard(start + 1, 'UB')}
+            </div>
+            ${isCabin ? `
+            <div class="facing-divider">Facing Luxury Berths</div>
+            <div class="bench-row two-berths">
+              ${renderBerthCard(start + 2, 'LB')}
+              ${renderBerthCard(start + 3, 'UB')}
+            </div>` : ''}
+            <div class="cabin-door-slider">
+              <span>🚪 Lockable Sliding Door · Opens into Private First AC Corridor</span>
+            </div>
+          </div>
+          <div class="aisle-walkway">
+            <span>🚶</span>
+            <span class="aisle-text">CARPETED CORRIDOR</span>
+            <span>🚶</span>
+          </div>
+        </div>`;
+    } else {
+      // CC, 2S, EC
+      const start = (b - 1) * baySize + 1;
+      const end = start + baySize - 1;
+      const bayHasAssigned = seatsList.some(s => s >= start && s <= end);
+      bayContent = `
+        <div class="bogie-bay-title">
+          <span class="bay-name">💺 Row ${b} (Seats ${start}–${end})</span>
+          ${bayHasAssigned ? `<span class="allocated-callout">★ Your Seat: #${seatsList.filter(s => s >= start && s <= end).join(', ')} (${activeInfo.name})</span>` : ''}
+        </div>
+        <div class="bogie-chair-layout">
+          <div class="chair-row-strip">
+            <div class="chair-block left">
+              <span title="Window Side" style="font-size:12px;">🪟</span>
+              ${renderChairSeat(start, 'W')}
+              ${renderChairSeat(start + 1, 'M')}
+              ${renderChairSeat(start + 2, 'A')}
+            </div>
+            <div class="chair-aisle-divider">
+              <span>▲</span>
+              <span>AISLE</span>
+              <span>▲</span>
+            </div>
+            <div class="chair-block right">
+              ${renderChairSeat(start + 3, 'A')}
+              ${renderChairSeat(start + 4, 'W')}
+              <span title="Window Side" style="font-size:12px;">🪟</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    bayViews += `<div class="bogie-bay-content" data-bay="${b}" ${isVisible ? '' : 'hidden'}>${bayContent}</div>`;
+  }
+
+  let legendHtml = '';
+  if (cls === 'CC' || cls === '2S') {
+    legendHtml = `
+      <div class="legend-item"><span class="legend-color your-seat">★</span><span>Your Allocated Seat</span></div>
+      <div class="legend-item"><span class="legend-color chair-w">W</span><span>Window Seat (Scenic View)</span></div>
+      <div class="legend-item"><span class="legend-color chair-m">M</span><span>Middle Seat</span></div>
+      <div class="legend-item"><span class="legend-color chair-a">A</span><span>Aisle Seat (Direct Corridor Access)</span></div>`;
+  } else if (cls === '2A') {
+    legendHtml = `
+      <div class="legend-item"><span class="legend-color your-seat">★</span><span>Your Allocated Seat</span></div>
+      <div class="legend-item"><span class="legend-color berth-lb">LB</span><span>Lower Berth (Floor Level · Easy Access)</span></div>
+      <div class="legend-item"><span class="legend-color berth-ub">UB</span><span>Upper Berth (High Headroom · Quiet)</span></div>
+      <div class="legend-item"><span class="legend-color berth-sl">SL</span><span>Side Lower (Window View)</span></div>
+      <div class="legend-item"><span class="legend-color berth-su">SU</span><span>Side Upper (Top Side Bunk)</span></div>`;
+  } else if (cls === '1A') {
+    legendHtml = `
+      <div class="legend-item"><span class="legend-color your-seat">★</span><span>Your Allocated Seat</span></div>
+      <div class="legend-item"><span class="legend-color berth-lb">LB</span><span>Lower Berth (Floor Level · Luxury Cushion)</span></div>
+      <div class="legend-item"><span class="legend-color berth-ub">UB</span><span>Upper Berth (Wide Berth · Quiet)</span></div>
+      <div class="legend-item"><span>🚪 Lockable Cabin / Coupe</span></div>`;
+  } else {
+    legendHtml = `
+      <div class="legend-item"><span class="legend-color your-seat">★</span><span>Your Allocated Seat</span></div>
+      <div class="legend-item"><span class="legend-color berth-lb">LB</span><span>Lower Berth (Floor Level · Window)</span></div>
+      <div class="legend-item"><span class="legend-color berth-mb">MB</span><span>Middle Berth (Foldable Bunk)</span></div>
+      <div class="legend-item"><span class="legend-color berth-ub">UB</span><span>Upper Berth (Top Bunk · Quiet)</span></div>
+      <div class="legend-item"><span class="legend-color berth-sl">SL</span><span>Side Lower (Window View · 2 Day Seats)</span></div>
+      <div class="legend-item"><span class="legend-color berth-su">SU</span><span>Side Upper (Top Side Bunk)</span></div>`;
+  }
+
+  return `
+    <div class="bogie-wrapper ${themeClass}">
+      <div class="bogie-header">
+        <div class="bogie-badge-row">
+          <span class="bogie-coach-pill">🚆 Coach / Bogie ${escapeHTML(coach || 'Coach')}</span>
+          <span class="bogie-class-pill">${escapeHTML(classNameFull)}</span>
+          ${seatsList.length ? `<span class="bogie-seat-pill">★ Allocated: Seat ${seatsList.join(', ')} (${activeInfo.name})</span>` : '<span class="bogie-seat-pill">Seating Layout</span>'}
+        </div>
+        <div class="bogie-quick-guide">💡 <strong>Coach Guide:</strong> ${layoutExplainer}</div>
+      </div>
+      <div class="bogie-carriage">
+        <div class="bogie-vestibule left">
+          <div class="vestibule-door">🚪 Door</div>
+          <div class="vestibule-label">Entry</div>
+        </div>
+        <div class="bogie-body">
+          <div class="bogie-bay-tabs-container">
+            <span class="bogie-tabs-label">Compartments:</span>
+            ${bayTabs}
+          </div>
+          ${bayViews}
+        </div>
+        <div class="bogie-vestibule right">
+          <div class="vestibule-door">🚪 Door</div>
+          <div class="vestibule-label">Toilet</div>
+        </div>
+      </div>
+      <div class="bogie-track-bottom">
+        <div class="wheel-group">◯═══◯</div>
+        <div class="track-line"></div>
+        <div class="wheel-group">◯═══◯</div>
+      </div>
+      <div class="bogie-legend">
+        ${legendHtml}
+    </div>`;
+}
 function updateStationNames(){for(const field of ['origin','destination']) $(field+'-name').textContent = nameOf($(field).value.trim().toUpperCase());}
 for(const field of ['origin','destination']) $(field).addEventListener('input',updateStationNames);
 $('swap').addEventListener('click',()=>{[$('origin').value,$('destination').value]=[$('destination').value,$('origin').value];updateStationNames();});
@@ -100,6 +491,46 @@ for(const field of ['origin','destination']){
 document.addEventListener('click',event=>{
   for(const field of ['origin','destination'])
     if(!event.target.closest(`#${field}, #${field}-suggestions`)) closeSuggestions(field);
+
+  const toggleBtn = event.target.closest('.bogie-toggle-btn');
+  if(toggleBtn){
+    const section = toggleBtn.closest('.ticket-bogie-section');
+    if(section){
+      const collapse = section.querySelector('.bogie-collapse');
+      if(collapse){
+        const isHidden = collapse.hasAttribute('hidden');
+        if(isHidden){
+          collapse.removeAttribute('hidden');
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          const arrow = toggleBtn.querySelector('.bogie-toggle-arrow');
+          if(arrow) arrow.textContent = '▲';
+        } else {
+          collapse.setAttribute('hidden', '');
+          toggleBtn.setAttribute('aria-expanded', 'false');
+          const arrow = toggleBtn.querySelector('.bogie-toggle-arrow');
+          if(arrow) arrow.textContent = '▼';
+        }
+      }
+    }
+    return;
+  }
+
+  const bayTab = event.target.closest('.bogie-bay-tab');
+  if(bayTab){
+    const carriage = bayTab.closest('.bogie-carriage');
+    if(carriage){
+      const bayNum = bayTab.dataset.bay;
+      carriage.querySelectorAll('.bogie-bay-tab').forEach(t => t.classList.toggle('active', t.dataset.bay === bayNum));
+      carriage.querySelectorAll('.bogie-bay-content').forEach(c => {
+        if(c.dataset.bay === bayNum){
+          c.removeAttribute('hidden');
+        } else {
+          c.setAttribute('hidden', '');
+        }
+      });
+    }
+    return;
+  }
 });
 for(const button of document.querySelectorAll('[data-dialog]')) button.addEventListener('click',()=>$(button.dataset.dialog).showModal());
 // Journey cards (and their Pareto-optimal / Degraded badges) render after this
@@ -121,16 +552,26 @@ for(const button of document.querySelectorAll('[data-route]')) button.addEventLi
   [$('origin').value,$('destination').value,$('date').value]=button.dataset.route.split(',');
   $('travel-class').value='SL';$('max-transfers').value='1';$('seat-change-tolerance').value='any';resetFilters(false);updateStationNames();$('search-form').requestSubmit();
 });
-function resetFilters(render=true){$('filter-direct').checked=true;$('filter-seat').checked=true;$('filter-train').checked=true;$('confirmed-only').checked=false;$('allow-rac').checked=true;$('allow-waitlist').checked=true;$('sort').value='recommended';if(render&&lastQuery)renderOptions();}
+function resetFilters(render=true){$('filter-direct').checked=true;$('filter-seat').checked=true;$('filter-train').checked=true;$('confirmed-only').checked=false;$('allow-rac').checked=true;$('allow-waitlist').checked=true;$('sort').value='departure';if(render&&lastQuery)renderOptions();}
 $('reset-filters').addEventListener('click',()=>{resetFilters();$('seat-change-tolerance').value='any';});
 for(const id of ['filter-direct','filter-seat','filter-train','confirmed-only','allow-rac','allow-waitlist','sort']) $(id).addEventListener('change',()=>{if(lastQuery&&!busy)renderOptions();});
 function empty(title, message){return `<div class="empty-state"><span class="empty-icon">⌁</span><h3>${escapeHTML(title)}</h3><p>${escapeHTML(message)}</p><button class="secondary-button" id="adjust-search">Adjust your search ↑</button></div>`;}
 function bindAdjust(){const button=$('adjust-search');if(button)button.addEventListener('click',()=>{$('origin').focus();$('search-form').scrollIntoView({behavior:'smooth',block:'center'});});}
 function details(option){return option.tickets.map((t,i)=>{
   let transfer='';
-  if(i>0){const penalty=option.comfort.per_transfer_penalties[i-1];if(penalty){const coach=penalty.coach_distance == null?'':` · ${penalty.coach_distance} coach positions apart`;transfer=`<div class="transfer-note">${penalty.kind==='same_train'?'Change seat':'Change trains'} at <strong>${escapeHTML(nameOf(penalty.station))}</strong>${coach}${penalty.is_night?' · Night transfer':''}<br>Transfer comfort penalty: ${escapeHTML(penalty.penalty)}${penalty.note?' · '+escapeHTML(penalty.note):''}</div>`;}}
-  return `${transfer}<div class="leg"><strong>${escapeHTML(t.train_number)} · ${escapeHTML(t.train_name)}</strong><p>${escapeHTML(nameOf(t.from_station))} ${timeOf(t.boarding_datetime)} (${dateOf(t.boarding_datetime)}) → ${escapeHTML(nameOf(t.to_station))} ${timeOf(t.alighting_datetime)} (${dateOf(t.alighting_datetime)})</p><p>Coach ${escapeHTML(t.coach || 'unknown')} · ${escapeHTML(seatLabel(t))} · ${escapeHTML(t.travel_class || 'Unknown class')} · ${escapeHTML(t.status || 'Availability unknown')} · ${money(option.fare.per_ticket_fares[i])} estimated</p><p class="berths">${berths(t)}</p></div>`;
-}).join('')+`<p class="score-note">Moving time ${duration(option.fare.moving_time_minutes)} · Dwell & connections ${duration(option.fare.layover_minutes)} · Transfer penalty ${option.comfort.total_feasibility_penalty}<br>Overall ranking score ${option.score.toFixed(1)} · components ${escapeHTML(JSON.stringify(option.score_components))} (lower is better). Availability is simulated; fares are estimates.${option.fare_imputed?' Missing fare was estimated conservatively for ranking.':''}</p>`;}
+  if(i>0){const penalty=option.comfort.per_transfer_penalties[i-1];if(penalty){const coach=penalty.coach_distance == null?'':` · ${penalty.coach_distance} coach positions apart`;transfer=`<div class="transfer-note">${penalty.kind==='same_train'?'Change seat':'Change trains'} at <strong>${escapeHTML(nameOf(penalty.station))}</strong>${coach}${penalty.is_night?' · Night transfer':''}</div>`;}}
+  const bogieHtml = renderBogie(t.coach, t.travel_class, t.seat_numbers, t.train_number);
+  const bogieSection = `<div class="ticket-bogie-section">
+    <button type="button" class="bogie-toggle-btn" aria-expanded="false">
+      <span>💺 View Coach & Seating Arrangement (${escapeHTML(t.coach || 'Coach')} · ${escapeHTML(seatLabel(t))})</span>
+      <span class="bogie-toggle-arrow">▼</span>
+    </button>
+    <div class="bogie-collapse" hidden>
+      ${bogieHtml}
+    </div>
+  </div>`;
+  return `${transfer}<div class="leg"><strong>${escapeHTML(t.train_number)} · ${escapeHTML(t.train_name)}</strong><p>${escapeHTML(nameOf(t.from_station))} ${timeOf(t.boarding_datetime)} (${dateOf(t.boarding_datetime)}) → ${escapeHTML(nameOf(t.to_station))} ${timeOf(t.alighting_datetime)} (${dateOf(t.alighting_datetime)})</p><p>Coach ${escapeHTML(t.coach || 'unknown')} · ${escapeHTML(seatLabel(t))} · ${escapeHTML(t.travel_class || 'Unknown class')} · ${escapeHTML(t.status || 'Availability unknown')} · ${money(option.fare.per_ticket_fares[i])} estimated</p><p class="berths">${berths(t)}</p>${bogieSection}</div>`;
+}).join('');}
 function card(option, compact=false){
   const first=option.tickets[0],last=option.tickets.at(-1), dayOffset=Math.round((Date.parse(last.alighting_datetime.slice(0,10))-Date.parse(first.boarding_datetime.slice(0,10)))/86400000);
   const trains=[...new Set(option.tickets.map(t=>t.train_number))];
@@ -167,17 +608,45 @@ function trainSection(key, train, journeys){
 function renderOptions(){
   const kindChecked={direct:$('filter-direct').checked,seat:$('filter-seat').checked,train:$('filter-train').checked};
   const visible=options.filter(o=>kindChecked[journeyKind(o)]&&(!$('confirmed-only').checked||o.bookable)&&($('allow-rac').checked||!o.tickets.some(t=>t.status==='RAC'))&&($('allow-waitlist').checked||!o.tickets.some(t=>t.status==='WAITLIST')));
-  const comparators={recommended:(a,b)=>Number(!!a.degraded_agents?.length)-Number(!!b.degraded_agents?.length)||a.score-b.score,fare:(a,b)=>(a.fare.total_fare??Infinity)-(b.fare.total_fare??Infinity),time:(a,b)=>a.fare.wall_clock_minutes-b.fare.wall_clock_minutes,availability:(a,b)=>Number(b.bookable)-Number(a.bookable)||a.score-b.score,comfort:(a,b)=>a.transfers-b.transfers||a.comfort.total_feasibility_penalty-b.comfort.total_feasibility_penalty};
-  const compare=comparators[$('sort').value];visible.sort(compare);
+  const comparators={
+    departure:(a,b)=>{
+      const tA = Date.parse(a.tickets[0]?.boarding_datetime) || 0;
+      const tB = Date.parse(b.tickets[0]?.boarding_datetime) || 0;
+      return tA - tB || a.score - b.score;
+    },
+    recommended:(a,b)=>Number(!!a.degraded_agents?.length)-Number(!!b.degraded_agents?.length)||a.score-b.score,
+    fare:(a,b)=>(a.fare.total_fare??Infinity)-(b.fare.total_fare??Infinity),
+    time:(a,b)=>a.fare.wall_clock_minutes-b.fare.wall_clock_minutes,
+    availability:(a,b)=>Number(b.bookable)-Number(a.bookable)||a.score-b.score,
+    comfort:(a,b)=>a.transfers-b.transfers||a.comfort.total_feasibility_penalty-b.comfort.total_feasibility_penalty
+  };
+  const compare=comparators[$('sort').value] || comparators.departure;
+  visible.sort(compare);
   const groups=new Map();
   const keyFor=(number,run)=>`${number}:${run}`;
   for(const train of directTrains)groups.set(keyFor(train.train_number,train.train_run_date),{train,journeys:[]});
   for(const option of visible){const t=option.tickets[0],key=keyFor(t.train_number,t.train_run_date);if(!groups.has(key))groups.set(key,{train:null,journeys:[]});groups.get(key).journeys.push(option);}
   const showFull=kindChecked.direct&&!$('confirmed-only').checked&&$('allow-rac').checked&&$('allow-waitlist').checked;
   const shown=[...groups.entries()].filter(([,g])=>g.journeys.length||(showFull&&g.train));
-  shown.sort(([,a],[,b])=>a.journeys.length&&b.journeys.length?compare(a.journeys[0],b.journeys[0]):Number(!a.journeys.length)-Number(!b.journeys.length));
+
+  const departureForGroup = g => {
+    if(g.journeys.length && g.journeys[0].tickets && g.journeys[0].tickets[0]) {
+      return Date.parse(g.journeys[0].tickets[0].boarding_datetime) || 0;
+    }
+    if(g.train?.departure) {
+      const d = g.train.train_run_date || (lastQuery ? lastQuery.date : '');
+      return Date.parse(`${d}T${g.train.departure}`) || 0;
+    }
+    return 0;
+  };
+
+  if($('sort').value === 'departure'){
+    shown.sort(([,a],[,b]) => departureForGroup(a) - departureForGroup(b));
+  } else {
+    shown.sort(([,a],[,b])=>a.journeys.length&&b.journeys.length?compare(a.journeys[0],b.journeys[0]):Number(!a.journeys.length)-Number(!b.journeys.length));
+  }
   $('results-title').textContent=`${nameOf(lastQuery.origin)} → ${nameOf(lastQuery.destination)}`;
-  $('results-subtitle').textContent=`${dateOf(lastQuery.date)} · ${lastQuery.passenger_count||1} passenger(s) · ${shown.length} trains · ${visible.length} journey options${lastQuery.travel_class?' · '+lastQuery.travel_class:''}`;
+  if($('results-subtitle')) $('results-subtitle').textContent=`${dateOf(lastQuery.date)} · ${lastQuery.passenger_count||1} passenger(s) · ${shown.length} trains · ${visible.length} journey options${lastQuery.travel_class?' · '+lastQuery.travel_class:''}`;
   $('sort-control').hidden=!options.length;
   document.querySelector('label:has(#filter-direct) span').textContent=String(options.filter(o=>journeyKind(o)==='direct').length).padStart(2,'0');
   document.querySelector('label:has(#filter-seat) span').textContent=String(options.filter(o=>journeyKind(o)==='seat').length).padStart(2,'0');
@@ -198,10 +667,21 @@ async function loadBookings(){
     const response = await fetch('/api/bookings?status=');
     if(!response.ok) throw new Error();
     const {bookings} = await response.json();
+    bookings.sort((a,b) => (Date.parse(a.departure || a.run_date) || 0) - (Date.parse(b.departure || b.run_date) || 0));
     $('bookings-count').textContent = bookings.length ? `${bookings.filter(b=>b.status==='ACTIVE').length} active` : '';
-    $('bookings-list').innerHTML = bookings.length ? bookings.map(b=>
-      `<article class="direct-row booking-row"><div class="direct-train"><strong>${escapeHTML(b.train_number)}</strong><span>${escapeHTML(nameOf(b.from_station))} → ${escapeHTML(nameOf(b.to_station))}</span></div><div class="direct-times"><span>${escapeHTML(b.coach_code)} · ${escapeHTML((b.seat_numbers||[]).join(', ')||'Legacy unassigned')}</span><i>·</i><span>${escapeHTML(b.travel_class||'—')}</span></div><div class="direct-meta"><span>${escapeHTML(b.reference)} · ${escapeHTML(b.status)}</span><span>${escapeHTML(b.passenger_name||'Passenger')} · ${money(b.fare)}</span><span>${escapeHTML(b.departure||b.run_date)} → ${escapeHTML(b.arrival||'')}</span>${b.status==='ACTIVE'?`<button class="cancel-button" data-cancel="${escapeHTML(b.id)}">Cancel leg</button>`:''}</div></article>`
-    ).join('') : '<p class="direct-empty">Nothing held yet. Reserve a berth on any journey below to see this date’s availability change.</p>';
+    $('bookings-list').innerHTML = bookings.length ? bookings.map(b=>{
+      const bogieHtml = renderBogie(b.coach_code, b.travel_class, b.seat_numbers, b.train_number);
+      const bogieSection = `<div class="ticket-bogie-section booking-bogie-section">
+        <button type="button" class="bogie-toggle-btn" aria-expanded="false">
+          <span>💺 View Coach & Seating Arrangement (${escapeHTML(b.coach_code || 'Coach')} · Seats ${(b.seat_numbers||[]).join(', ')||'Legacy unassigned'})</span>
+          <span class="bogie-toggle-arrow">▼</span>
+        </button>
+        <div class="bogie-collapse" hidden>
+          ${bogieHtml}
+        </div>
+      </div>`;
+      return `<article class="direct-row booking-row"><div class="direct-train"><strong>${escapeHTML(b.train_number)}</strong><span>${escapeHTML(nameOf(b.from_station))} → ${escapeHTML(nameOf(b.to_station))}</span></div><div class="direct-times"><span>${escapeHTML(b.coach_code)} · ${escapeHTML((b.seat_numbers||[]).join(', ')||'Legacy unassigned')}</span><i>·</i><span>${escapeHTML(b.travel_class||'—')}</span></div><div class="direct-meta"><span>${escapeHTML(b.reference)} · ${escapeHTML(b.status)}</span><span>${escapeHTML(b.passenger_name||'Passenger')} · ${money(b.fare)}</span><span>${escapeHTML(b.departure||b.run_date)} → ${escapeHTML(b.arrival||'')}</span>${b.status==='ACTIVE'?`<button class="cancel-button" data-cancel="${escapeHTML(b.id)}">Cancel leg</button>`:''}</div>${bogieSection}</article>`;
+    }).join('') : '<p class="direct-empty">Nothing held yet. Reserve a berth on any journey below to see this date’s availability change.</p>';
     $('bookings-panel').hidden = !bookings.length;
     for(const button of document.querySelectorAll('[data-cancel]'))
       button.addEventListener('click',()=>cancelBooking(button.dataset.cancel,button));
@@ -241,7 +721,21 @@ $('booking-form').addEventListener('submit', async event=>{
     if(!response.ok) throw new Error(result.error || 'Booking failed. Search again.');
     pendingBooking = null;
     $('booking-form').hidden = true;
-    $('booking-confirmation').innerHTML = `<h3>Simulated booking confirmed</h3><p><strong>${escapeHTML(result.reference)}</strong> · ${money(result.total_fare)}</p><p>${escapeHTML(result.disclaimer)}</p>` + result.bookings.map(b=>`<p>${escapeHTML(b.passenger_name)} · ${escapeHTML(b.train_number)} · ${escapeHTML(b.coach_code)} / ${b.seat_numbers.join(', ')}<br>${escapeHTML(b.from_station)} → ${escapeHTML(b.to_station)}<br>${escapeHTML(b.departure)} → ${escapeHTML(b.arrival)}<br>Booking ID: ${escapeHTML(b.id)}</p>`).join('');
+    $('booking-confirmation').innerHTML = `<h3>Simulated booking confirmed</h3><p><strong>${escapeHTML(result.reference)}</strong> · ${money(result.total_fare)}</p><p>${escapeHTML(result.disclaimer)}</p>` + result.bookings.map(b=>{
+      const bogieHtml = renderBogie(b.coach_code, b.travel_class, b.seat_numbers, b.train_number);
+      return `<div class="confirmed-ticket-card" style="margin-top:1rem;padding:12px;background:#f5f9f4;border:1px solid #d4e5d2;border-radius:10px;">
+        <p style="margin:0 0 8px;"><strong>${escapeHTML(b.passenger_name)}</strong> · Train ${escapeHTML(b.train_number)} · Coach ${escapeHTML(b.coach_code)} · Seat(s) ${escapeHTML((b.seat_numbers||[]).join(', '))}<br>${escapeHTML(nameOf(b.from_station))} → ${escapeHTML(nameOf(b.to_station))}<br>Departs ${escapeHTML(b.departure)} → Arrives ${escapeHTML(b.arrival)}<br><small>Booking ID: ${escapeHTML(b.id)}</small></p>
+        <div class="ticket-bogie-section">
+          <button type="button" class="bogie-toggle-btn" aria-expanded="true">
+            <span>💺 View Coach & Seating Arrangement (${escapeHTML(b.coach_code)} · Seats ${escapeHTML((b.seat_numbers||[]).join(', '))})</span>
+            <span class="bogie-toggle-arrow">▲</span>
+          </button>
+          <div class="bogie-collapse">
+            ${bogieHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
     await loadBookings();
     await rerun('Booking saved. Results now reflect the reserved seats.');
   } catch(error) { $('booking-error').textContent = error.message; $('confirm-booking').disabled = false; }
@@ -265,11 +759,23 @@ function openSplitModal(option){
   html += `<div class="split-timeline">`;
   html += `<div class="split-node board"><span class="split-node-icon">◉</span><div class="split-node-label">Board At</div><div class="split-node-main"><strong>${escapeHTML(nameOf(first.from_station))} (${escapeHTML(first.from_station)})</strong><span>${fullDateTime(first.boarding_datetime)}</span></div></div>`;
   tickets.forEach((t,i)=>{
-    html += `<div class="split-ticket"><div class="split-ticket-head"><strong>Ticket ${i+1}</strong><span>${escapeHTML(t.from_station)} → ${escapeHTML(t.to_station)} · ${duration((Date.parse(t.alighting_datetime)-Date.parse(t.boarding_datetime))/60000)}</span></div><div class="split-ticket-body"><div class="split-ticket-fare"><span class="split-class">${escapeHTML(t.travel_class||'Unknown class')} · ${escapeHTML(t.train_number)} · ${escapeHTML(t.coach)} / ${escapeHTML(seatLabel(t))}</span><strong>${money(option.fare.per_ticket_fares[i])}</strong><span class="split-avail">${escapeHTML(t.status||'Availability unknown')}${t.seats_remaining!=null?' · '+t.seats_remaining+' left':''}</span></div><button type="button" class="split-book-btn" data-legs="${legs}" data-label="Review whole journey">Review whole journey</button></div></div>`;
+    const bogieHtml = renderBogie(t.coach, t.travel_class, t.seat_numbers, t.train_number);
+    const bogieSection = `<div class="ticket-bogie-section modal-bogie-section">
+      <button type="button" class="bogie-toggle-btn" aria-expanded="false">
+        <span>💺 View Coach & Seating Arrangement (${escapeHTML(t.coach || 'Coach')} · ${escapeHTML(seatLabel(t))})</span>
+        <span class="bogie-toggle-arrow">▼</span>
+      </button>
+      <div class="bogie-collapse" hidden>
+        ${bogieHtml}
+      </div>
+    </div>`;
+    html += `<div class="split-ticket"><div class="split-ticket-head"><strong>Ticket ${i+1}</strong><span>${escapeHTML(t.from_station)} → ${escapeHTML(t.to_station)} · ${duration((Date.parse(t.alighting_datetime)-Date.parse(t.boarding_datetime))/60000)}</span></div><div class="split-ticket-body"><div class="split-ticket-fare"><span class="split-class">${escapeHTML(t.travel_class||'Unknown class')} · ${escapeHTML(t.train_number)} · ${escapeHTML(t.coach)} / ${escapeHTML(seatLabel(t))}</span><strong>${money(option.fare.per_ticket_fares[i])}</strong><span class="split-avail">${escapeHTML(t.status||'Availability unknown')}${t.seats_remaining!=null?' · '+t.seats_remaining+' left':''}</span></div><button type="button" class="split-book-btn" data-legs="${legs}" data-label="Review whole journey">Review whole journey</button></div>${bogieSection}</div>`;
     if(i < tickets.length-1){
       const next = tickets[i+1], penalty = penalties[i];
       const haltMin = Math.round((Date.parse(next.boarding_datetime)-Date.parse(t.alighting_datetime))/60000);
-      html += `<div class="split-node change"><span class="split-node-icon">⇄</span><div class="split-node-label">${penalty && penalty.kind==='same_train'?'Change Seat In Same Train At':'Change Trains At'}</div><div class="split-node-main"><strong>${escapeHTML(nameOf(next.from_station))} (${escapeHTML(next.from_station)})</strong><span>${fullDateTime(t.alighting_datetime)}</span></div>${haltMin>=0?`<div class="split-node-halt">Halt time: ${haltMin} m</div>`:''}</div>`;
+      const isSameTrain = penalty && penalty.kind==='same_train';
+      const transferLabel = isSameTrain ? `Scheduled train halt: ${duration(haltMin)}` : `Waiting time: ${duration(haltMin)} · Next train departs at ${timeOf(next.boarding_datetime)}`;
+      html += `<div class="split-node change"><span class="split-node-icon">⇄</span><div class="split-node-label">${isSameTrain?'Change Seat In Same Train At':'Change Trains At'}</div><div class="split-node-main"><strong>${escapeHTML(nameOf(next.from_station))} (${escapeHTML(next.from_station)})</strong><span>Arrive: ${timeOf(t.alighting_datetime)}</span></div>${haltMin>=0?`<div class="split-node-halt">${transferLabel}</div>`:''}</div>`;
     }
   });
   html += `<div class="split-node alight"><span class="split-node-icon">◉</span><div class="split-node-label">Get Down At</div><div class="split-node-main"><strong>${escapeHTML(nameOf(last.to_station))} (${escapeHTML(last.to_station)})</strong><span>${fullDateTime(last.alighting_datetime)}</span></div></div>`;
@@ -310,7 +816,7 @@ $('search-form').addEventListener('submit',async event=>{
     if(directResponse&&directResponse.ok)renderDirect(await directResponse.json());else directTrains=[];
     options=result.options;lastQuery=query;renderOptions();if(!initialSearch&&window.matchMedia('(max-width:720px)').matches)document.querySelector('.results-section').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});$('status').textContent=result.truncated?'Search limit reached. These are the valid options found so far; narrow the route or transfer limit to search further.':result.failure_reason?`No matching itinerary: ${result.failure_reason}`:'';
     $('summary-content').innerHTML=`<p>Search ${escapeHTML(result.search_id)} · A* with minimum remaining moving-time heuristic</p><p>${result.considered} candidates considered · ${result.duplicates} duplicates merged · ${result.pruned} pruned by constraints · ${result.seconds.toFixed(2)}s search time</p>${result.effort.map(e=>`<p><strong>${escapeHTML(e.agent_name)}</strong> explored ${e.nodes_expanded.toLocaleString()} states in ${(e.seconds||0).toFixed(2)}s · ${e.truncated?'Search limit reached':e.found?'Itinerary found':'No itinerary found'}</p>`).join('')}<p>Results are evaluated for fare, time, and transfer comfort, then ranked by the coordinator. This is a summary of completed work, not a live negotiation trace.</p>`;$('search-summary').hidden=false;
-  }catch(error){options=[];lastQuery=null;$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';$('results-subtitle').textContent='We couldn’t complete this search.';}
+  }catch(error){options=[];lastQuery=null;$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';if($('results-subtitle')) $('results-subtitle').textContent='We couldn’t complete this search.';}
   finally{initialSearch=false;busy=false;$('search-button').disabled=false;$('search-button').innerHTML='Find journeys <span>→</span>';$('results').setAttribute('aria-busy','false');}
 });
 /** Move a sample route's date into the current booking window, keeping its weekday.
@@ -326,5 +832,5 @@ function reanchor(date, min, max){
     if(d.getDay()===wanted)return d.toISOString().slice(0,10);
   return min;
 }
-async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();$('kerala-coverage').textContent=`${meta.station_count} Kerala stations · ${meta.covered_station_count} with timetable coverage · ${meta.trains} simulated train services`;$('transfer-policy').textContent=`Seat changes: ${meta.min_seat_change_minutes} min halt · Train changes: ${meta.min_train_change_minutes} min connection`;if(meta.trains){demoTrainCount=meta.trains;$('demo-train-count').textContent=`${demoTrainCount} demo trains`;}for(const code of Object.keys(stationNames))delete stationNames[code];for(const s of meta.stations){stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());stationCoverage[s.code]=s.bookable;}if(meta.dates){const[min,max]=meta.dates;[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${min} to ${max} (${meta.window_days||10} days from today, rolling).`;$('date').value=reanchor($('date').value,min,max);for(const button of document.querySelectorAll('[data-route]')){const[from,to,date]=button.dataset.route.split(',');button.dataset.route=[from,to,reanchor(date,min,max)].join(',');}}updateStationNames();await loadBookings();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
+async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();if($('kerala-coverage')) $('kerala-coverage').textContent=`${meta.station_count} Kerala stations · ${meta.covered_station_count} with timetable coverage · ${meta.trains} simulated train services`;$('transfer-policy').textContent=`Seat changes: ${meta.min_seat_change_minutes} min halt · Train changes: ${meta.min_train_change_minutes} min connection`;if(meta.trains){demoTrainCount=meta.trains;$('demo-train-count').textContent=`${demoTrainCount} demo trains`;}for(const code of Object.keys(stationNames))delete stationNames[code];for(const s of meta.stations){stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());stationCoverage[s.code]=s.bookable;}if(meta.dates){const[min,max]=meta.dates;[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${min} to ${max} (${meta.window_days||10} days from today, rolling).`;$('date').value=reanchor($('date').value,min,max);for(const button of document.querySelectorAll('[data-route]')){const[from,to,date]=button.dataset.route.split(',');button.dataset.route=[from,to,reanchor(date,min,max)].join(',');}}updateStationNames();await loadBookings();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
 initialize();

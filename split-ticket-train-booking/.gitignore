@@ -22,3 +22,6 @@ tests/.pytest-db/
 *.db-journal
 *.db-wal
 *.db-shm
+client/
+/railway.db
+*.db

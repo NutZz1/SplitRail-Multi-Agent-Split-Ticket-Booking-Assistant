@@ -10,7 +10,23 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; color: var(--ink); background: var(--paper); font: 14px 'DM Sans', sans-serif; }
-body::before { content: ''; position: absolute; inset: 0 0 auto; height: 453px; background: #113b2e; z-index: -1; }
+body::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 465px;
+  background-color: #113b2e;
+  background-image:
+    linear-gradient(180deg, rgba(10, 30, 24, 0.50) 0%, rgba(10, 30, 24, 0.22) 45%, rgba(14, 45, 35, 0.82) 100%),
+    linear-gradient(to right, rgba(8, 25, 18, 0.70) 0%, rgba(8, 25, 18, 0.30) 45%, rgba(8, 25, 18, 0.05) 75%, rgba(8, 25, 18, 0.20) 100%),
+    url('/hero-train.jpg'),
+    url('https://blog-content.ixigo.com/wp-content/uploads/2019/10/2500AdditionalServices.jpeg');
+  background-size: cover;
+  background-position: center 38%;
+  background-repeat: no-repeat;
+  z-index: -1;
+  box-shadow: inset 0 -20px 40px -10px rgba(10, 28, 22, 0.3);
+}
 button, input, select { font: inherit; }
 button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 button, a, summary { cursor: pointer; }
@@ -41,12 +57,12 @@ main { max-width: 1280px; padding: 0 30px; margin: auto; }
 .eyebrow { font-size: 10px; font-weight: 650; letter-spacing: 1.6px; display: flex; align-items: center; gap: 9px; color: #69786d; }
 .hero .eyebrow { color: #b6d0a4; }
 .eyebrow>span { width: 18px; height: 2px; background: var(--orange); }
-h1 { font-size: clamp(36px, 3.8vw, 52px); font-weight: 600; line-height: 1.12; letter-spacing: -2px; margin-top: 14px; }
+h1 { font-size: clamp(36px, 3.8vw, 52px); font-weight: 600; line-height: 1.12; letter-spacing: -2px; margin-top: 14px; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35); }
 h1 em { font-style: normal; color: #cee5ac; }
-.hero-description { color: #b6cbbf; font-size: 14px; line-height: 1.7; margin-top: 17px; }
-.route-preview { margin: 5px 0 0 auto; width: 100%; max-width: 410px; padding: 22px 25px; border: 1px solid #7eaa843b; border-radius: 12px; background: #ffffff04; }
+.hero-description { color: #b6cbbf; font-size: 14px; line-height: 1.7; margin-top: 17px; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25); }
+.route-preview { margin: 5px 0 0 auto; width: 100%; max-width: 410px; padding: 22px 25px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 12px; background: rgba(14, 38, 30, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2); }
 .preview-top { display: flex; justify-content: space-between; color: #a6bdae; font-size: 9px; letter-spacing: 1.5px; }
-.preview-stations { display: flex; align-items: center; gap: 18px; margin: 23px 0 21px; }
+.preview-stations { display: flex; align-items: center; gap: 18px; margin: 20px 0 4px; }
 .preview-stations>div:not(.preview-connection) { display: flex; flex-direction: column; gap: 5px; }
 .preview-stations>div:last-child { text-align: right; }
 .preview-stations strong { font: 600 36px 'Manrope', sans-serif; color: #deedca; }
@@ -84,7 +100,7 @@ h1 em { font-style: normal; color: #cee5ac; }
 .search-bottom select { border: 0; background: transparent; font-size: 12px; color: #324d2b; font-weight: 600; margin-left: 7px; }
 .search-bottom .shield-note { margin-left: auto; }
 .shield { font-size: 16px; margin-right: 5px; }
-.try-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 17px 0 30px; }
+.try-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 20px 0 28px; }
 .try-row>span { font-size: 9px; font-weight: 650; color: #6a7865; letter-spacing: 1px; margin-right: 8px; }
 .try-row button { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; font-size: 11px; color: #4d6344; }
 .try-row button span { margin-left: 10px; color: #829377; }
@@ -408,4 +424,156 @@ dialog>p:not(.eyebrow) { font-size: 13px; line-height: 1.9; color: #637652; }
   .card-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .card-actions button{justify-content:center;min-height:42px;padding:10px;white-space:normal}
   .card-actions .details-toggle{grid-column:1/-1}
+}
+
+/* --- Upgraded Realistic Bogie (Coach) Seating Arrangement --- */
+.ticket-bogie-section { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 10px; width: 100%; }
+.bogie-toggle-btn { background: #f2f7f1; color: #16402e; border: 1.5px solid #b6d3be; border-radius: 8px; padding: 8px 14px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all .18s ease; font-family: inherit; }
+.bogie-toggle-btn:hover { background: #e3efe1; border-color: #8bbd98; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+.bogie-toggle-btn[aria-expanded="true"] { background: #16402e; color: #fff; border-color: #16402e; }
+.bogie-toggle-arrow { font-size: 10px; transition: transform .2s ease; margin-left: 4px; }
+.bogie-collapse { margin-top: 12px; animation: fadeIn .2s ease; }
+
+.bogie-wrapper { background: #ffffff; border: 1.5px solid #d5e2d3; border-radius: 14px; padding: 18px; box-shadow: 0 6px 20px rgba(18, 62, 49, 0.08); font-family: 'Inter', system-ui, sans-serif; }
+
+/* Themes per class */
+.bogie-wrapper.theme-sl { --coach-accent: #1e5631; --coach-light: #eef7ee; --coach-border: #4d8b5f; }
+.bogie-wrapper.theme-3a { --coach-accent: #0f4c5c; --coach-light: #e8f4f8; --coach-border: #3b8296; }
+.bogie-wrapper.theme-2a { --coach-accent: #1e293b; --coach-light: #f1f5f9; --coach-border: #64748b; }
+.bogie-wrapper.theme-1a { --coach-accent: #4a0e17; --coach-light: #fdf2f4; --coach-border: #991b1b; }
+.bogie-wrapper.theme-cc { --coach-accent: #1d4ed8; --coach-light: #eff6ff; --coach-border: #60a5fa; }
+.bogie-wrapper.theme-2s { --coach-accent: #374151; --coach-light: #f3f4f6; --coach-border: #6b7280; }
+
+.bogie-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.bogie-badge-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bogie-coach-pill { background: var(--coach-accent, #1b4332); color: #fff; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 800; letter-spacing: .4px; }
+.bogie-class-pill { background: var(--coach-light, #eaf3e5); color: var(--coach-accent, #2d5a3c); border: 1px solid var(--coach-border, #cadfc4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.bogie-seat-pill { background: #fff8eb; color: #9a5307; border: 1.5px solid #f2c078; padding: 4px 11px; border-radius: 6px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(154,83,7,0.1); }
+.bogie-quick-guide { background: #f6faf5; border-left: 3.5px solid var(--coach-accent, #2d5a3c); padding: 7px 12px; border-radius: 0 6px 6px 0; font-size: 11px; color: #35523d; line-height: 1.45; }
+
+/* Carriage exterior frame */
+.bogie-carriage { display: grid; grid-template-columns: 52px 1fr 52px; background: #fafcfa; border: 2.5px solid var(--coach-border, #507b5a); border-radius: 16px; position: relative; overflow: hidden; box-shadow: inset 0 2px 6px rgba(0,0,0,0.03); }
+.bogie-vestibule { background: #edf4ea; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 10px; color: #3b5a44; font-weight: 700; padding: 14px 4px; text-align: center; }
+.bogie-vestibule.left { border-right: 2px dashed #b9d2b4; }
+.bogie-vestibule.right { border-left: 2px dashed #b9d2b4; }
+.vestibule-door { background: #dcebd8; border: 1px solid #acc4a8; border-radius: 4px; padding: 3px 5px; font-size: 9px; }
+.vestibule-label { font-size: 9px; letter-spacing: .5px; text-transform: uppercase; color: #5d7e67; }
+
+/* Coach Body & Bay Tabs */
+.bogie-body { padding: 14px 16px; }
+.bogie-bay-tabs-container { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1.5px solid #e3ede1; }
+.bogie-tabs-label { font-size: 11px; font-weight: 800; color: #3c5e46; letter-spacing: .5px; margin-right: 2px; }
+.bogie-bay-tab { background: #f1f6ef; border: 1px solid #c9dec6; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 650; color: #32513a; cursor: pointer; transition: all .15s ease; font-family: inherit; }
+.bogie-bay-tab:hover { background: #e1ede0; border-color: #9cbfa0; }
+.bogie-bay-tab.active { background: var(--coach-accent, #183e34); color: #fff; border-color: var(--coach-accent, #183e34); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.bogie-bay-tab.has-assigned { border-color: #e59324; font-weight: 800; color: #8c4700; background: #fff8ec; }
+.bogie-bay-tab.has-assigned.active { background: #d88924; color: #fff; border-color: #d88924; }
+
+/* Bay Header */
+.bogie-bay-content { animation: fadeIn .2s ease; }
+.bogie-bay-title { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 800; color: #1f3f2a; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px dashed #d5e4d2; }
+.bogie-bay-title .bay-name { display: flex; align-items: center; gap: 6px; }
+.bogie-bay-title .allocated-callout { background: #fff2de; color: #8e4700; border: 1px solid #f0be7c; padding: 2px 8px; border-radius: 5px; font-size: 10.5px; font-weight: 800; }
+
+/* Sleeper & AC 3-Tier / 2-Tier Bay Layout */
+.bogie-compartment-layout { display: grid; grid-template-columns: 1fr 38px 115px; gap: 10px; align-items: stretch; background: #f7faf6; border: 1.5px solid #d9e7d6; border-radius: 12px; padding: 12px; }
+.main-compartment { display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1.5px solid #d3e2d0; border-radius: 10px; padding: 10px; }
+.window-ledge { display: flex; align-items: center; justify-content: space-between; background: #eaf2e8; border: 1px solid #c9dec6; border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 700; color: #43694f; }
+.window-glass { display: inline-flex; align-items: center; gap: 4px; }
+.compartment-table { background: #d9e6d7; border: 1px solid #b8ceb5; border-radius: 4px; padding: 2px 6px; font-size: 9px; color: #375b42; font-weight: 700; }
+.bench-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.bench-row.two-berths { grid-template-columns: repeat(2, 1fr); }
+.facing-divider { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 9px; font-weight: 700; color: #73947c; letter-spacing: 1px; text-transform: uppercase; margin: 2px 0; }
+.facing-divider::before, .facing-divider::after { content: ''; flex: 1; border-top: 1px dashed #cfded0; }
+
+/* Aisle Corridor */
+.aisle-walkway { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #e8f1e6; border: 1px dashed #b8ceb6; border-radius: 6px; padding: 6px 2px; color: #52735b; font-size: 9px; font-weight: 800; text-align: center; }
+.aisle-text { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 2px; font-size: 8.5px; }
+
+/* Side Berths Area */
+.side-compartment { display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1.5px solid #d3e2d0; border-radius: 10px; padding: 10px; }
+.side-window-ledge { background: #eaf2e8; border: 1px solid #c9dec6; border-radius: 6px; padding: 4px 6px; font-size: 9.5px; font-weight: 700; color: #43694f; text-align: center; }
+.side-berths-stack { display: flex; flex-direction: column; gap: 6px; }
+
+/* Berth Card (Realistic Train Bunk) */
+.bogie-berth-card { background: #ffffff; border: 1.5px solid #c2d8bf; border-radius: 8px; padding: 7px 5px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 58px; transition: transform .12s, box-shadow .12s; text-align: center; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.bogie-berth-card:hover { transform: translateY(-1.5px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-color: #8bbd98; }
+.berth-pillow { width: 100%; height: 5px; background: #e2ede0; border-radius: 3px 3px 0 0; margin-bottom: 2px; }
+.berth-num-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.berth-number { font-size: 13.5px; font-weight: 850; color: #183e34; font-family: 'Manrope', system-ui, sans-serif; line-height: 1; }
+.berth-type-pill { font-size: 8px; font-weight: 800; padding: 1.5px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; margin-top: 3px; }
+.berth-level-text { font-size: 7.5px; font-weight: 700; color: #62826c; margin-top: 1px; }
+
+/* Level Colors */
+.level-lb { background: #e7f5e5; color: #1d612f; border: 1px solid #bce1b7; }
+.level-mb { background: #eaf1fb; color: #1d4b8f; border: 1px solid #bfd7f7; }
+.level-ub { background: #f6eefc; color: #6b21a8; border: 1px solid #e2c7f5; }
+.level-sl { background: #fef7e6; color: #8c5304; border: 1px solid #fcdfa2; }
+.level-su { background: #faeef8; color: #86198f; border: 1px solid #f0c5ec; }
+
+/* ASSIGNED BERTH HIGHLIGHT */
+.bogie-berth-card.is-assigned { background: #16402e !important; border: 2px solid #0c2b1e !important; color: #ffffff !important; box-shadow: 0 0 0 3px #f59e0b, 0 6px 16px rgba(22,64,46,0.35) !important; transform: scale(1.05) !important; z-index: 3; }
+.bogie-berth-card.is-assigned .berth-pillow { background: #e59324 !important; }
+.bogie-berth-card.is-assigned .berth-number { color: #ffffff !important; font-size: 14.5px !important; }
+.bogie-berth-card.is-assigned .berth-type-pill { background: #f59e0b !important; color: #1a3627 !important; font-weight: 850 !important; border-color: #f59e0b !important; }
+.bogie-berth-card.is-assigned .berth-level-text { color: #d0f0c0 !important; font-weight: 750 !important; }
+.bogie-berth-card.is-assigned .you-badge { background: #f59e0b; color: #153324; font-size: 7.5px; font-weight: 900; padding: 1.5px 5px; border-radius: 3px; letter-spacing: .5px; margin-top: 2px; }
+
+/* --- 1AC First Class Luxury Cabin / Coupe Grid --- */
+.bogie-1ac-layout { display: grid; grid-template-columns: 1fr 34px; gap: 12px; background: #fff8f8; border: 1.5px solid #eec8cc; border-radius: 12px; padding: 14px; }
+.cabin-1ac-room { display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 2px solid #b91c1c; border-radius: 10px; padding: 12px; box-shadow: 0 2px 8px rgba(185,28,28,0.06); }
+.cabin-1ac-header { display: flex; justify-content: space-between; align-items: center; background: #fdf2f4; border: 1px solid #f8d7da; border-radius: 6px; padding: 5px 10px; font-size: 10px; font-weight: 800; color: #881337; }
+.cabin-door-slider { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 9.5px; font-weight: 750; color: #7f1d1d; background: #fbf0f2; border: 1px dashed #e29ca4; border-radius: 4px; padding: 3px; }
+
+/* --- Chair Car (CC / 2S) Layout --- */
+.bogie-chair-layout { display: flex; flex-direction: column; gap: 10px; background: #f6f9fc; border: 1.5px solid #d5e2f0; border-radius: 12px; padding: 14px; }
+.chair-row-strip { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 8px; align-items: center; }
+.chair-block { display: flex; gap: 6px; align-items: center; justify-content: center; }
+.chair-aisle-divider { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: #64748b; letter-spacing: 1px; text-align: center; }
+
+/* Ergonomic Train Seat Card */
+.bogie-chair-seat { background: #ffffff; border: 1.5px solid #bfd3e8; border-radius: 8px 8px 6px 6px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 52px; min-width: 48px; transition: transform .12s, box-shadow .12s; text-align: center; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.bogie-chair-seat:hover { transform: translateY(-1.5px); border-color: #3b82f6; box-shadow: 0 3px 8px rgba(59,130,246,0.15); }
+.chair-headrest { width: 70%; height: 4px; background: #dbeafe; border-radius: 3px 3px 0 0; margin-bottom: 2px; }
+.chair-num { font-size: 13px; font-weight: 850; color: #1e3a8a; font-family: 'Manrope', system-ui, sans-serif; }
+.chair-pos-pill { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; margin-top: 2px; }
+.pos-window { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.pos-middle { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.pos-aisle { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+.bogie-chair-seat.is-assigned { background: #1e3a8a !important; border: 2px solid #172554 !important; color: #fff !important; box-shadow: 0 0 0 3px #f59e0b, 0 6px 16px rgba(30,58,138,0.3) !important; transform: scale(1.06) !important; z-index: 3; }
+.bogie-chair-seat.is-assigned .chair-headrest { background: #f59e0b !important; }
+.bogie-chair-seat.is-assigned .chair-num { color: #ffffff !important; }
+.bogie-chair-seat.is-assigned .chair-pos-pill { background: #f59e0b !important; color: #0f172a !important; font-weight: 900 !important; }
+
+/* Track & Bogie Wheels */
+.bogie-track-bottom { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px 0; color: #5a7561; font-size: 10px; font-weight: 800; letter-spacing: 2px; }
+.wheel-group { background: #e3ede1; border: 1.5px solid #5a7561; border-radius: 4px; padding: 2px 8px; font-size: 9px; }
+.track-line { flex: 1; border-bottom: 2px solid #8ca693; margin: 0 10px; }
+
+/* Comprehensive Legend */
+.bogie-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 14px; padding-top: 10px; border-top: 1.5px solid #e3ede1; font-size: 10px; color: #43634e; }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.legend-color { display: inline-block; width: 14px; height: 14px; border-radius: 3px; font-size: 8px; font-weight: 800; text-align: center; line-height: 14px; }
+.legend-color.your-seat { background: #16402e; color: #f59e0b; border: 1.5px solid #f59e0b; }
+.legend-color.berth-lb { background: #e7f5e5; color: #1d612f; border: 1px solid #bce1b7; }
+.legend-color.berth-mb { background: #eaf1fb; color: #1d4b8f; border: 1px solid #bfd7f7; }
+.legend-color.berth-ub { background: #f6eefc; color: #6b21a8; border: 1px solid #e2c7f5; }
+.legend-color.berth-sl { background: #fef7e6; color: #8c5304; border: 1px solid #fcdfa2; }
+.legend-color.berth-su { background: #faeef8; color: #86198f; border: 1px solid #f0c5ec; }
+.legend-color.chair-w { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.legend-color.chair-m { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.legend-color.chair-a { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+@media (max-width: 640px) {
+  .bogie-carriage { grid-template-columns: 36px 1fr 36px; }
+  .bogie-vestibule { padding: 10px 2px; font-size: 8px; }
+  .bogie-body { padding: 10px; }
+  .bogie-compartment-layout { grid-template-columns: 1fr; gap: 8px; }
+  .aisle-walkway { writing-mode: horizontal-tb; transform: none; height: 22px; width: 100%; flex-direction: row; }
+  .aisle-text { writing-mode: horizontal-tb; transform: none; }
+  .bench-row { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .bogie-berth-card { min-height: 50px; padding: 5px 2px; }
+  .berth-number { font-size: 12px; }
+  .chair-row-strip { grid-template-columns: 1fr; gap: 6px; }
 }

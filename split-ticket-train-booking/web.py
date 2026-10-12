@@ -244,6 +244,7 @@ def direct_trains(system, payload):
                        'duration_minutes': (arrival-departure).total_seconds()/60,
                        'train_run_date': run.isoformat(), 'halts': direct.stops_between,
                        'running_days': system.store.get_run_pattern(train), 'classes': list(classes.values())})
+    trains.sort(key=lambda t: t['departure'])
     return {'trains': trains, 'source': 'local', 'provider': 'Operational local timetable',
             'notice': 'Historical local schedules; deterministic simulated seats. No live railway booking.',
             'other_days': 0, 'origin': origin, 'destination': destination}
@@ -480,7 +481,9 @@ def make_handler(system):
 #: address a file outside this directory.
 STATIC_FILES = {"/": ("index.html", "text/html; charset=utf-8"),
                 "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-                "/style.css": ("style.css", "text/css; charset=utf-8")}
+                "/style.css": ("style.css", "text/css; charset=utf-8"),
+                "/hero-train.jpg": ("hero-train.jpg", "image/jpeg"),
+                "/kerala-train-hero.jpg": ("kerala-train-hero.jpg", "image/jpeg")}
 
 
 def _booking_id(path: str) -> str | None:
