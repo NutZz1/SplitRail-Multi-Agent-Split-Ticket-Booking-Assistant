@@ -26,6 +26,7 @@ from src.fare_model import compute_fare
 from src.config import WEIGHTS, MIN_SEAT_CHANGE, MIN_TRAIN_CHANGE
 from src import config
 from src.trace import TraceRecorder
+from src.explain import AGENT_FOR_MODE, EXPLAIN_EXPANSIONS, EXPLAIN_SECONDS, compare_algorithms
 import datetime as dt
 
 WEB = Path(__file__).parent / "web"
@@ -44,8 +45,13 @@ LIVE_LOOKUPS = True
 ENGINE_LOCK = threading.Lock()
 
 
-def search(system, payload):
-    """Validate browser input and expose only presentation data, not search states."""
+def query_from_payload(system, payload) -> UserQuery:
+    """Validate browser input into a UserQuery.
+
+    Shared by ``/api/search`` and ``/api/algorithms`` so the algorithm
+    comparison always runs on exactly the query the agents answered -- if the
+    validation rules change, both endpoints change together.
+    """
     if not isinstance(payload, dict):
         raise ValueError("Please provide a journey query.")
     origin = validate_station(str(payload.get("origin", "")), system.store)
@@ -63,9 +69,28 @@ def search(system, payload):
     count = payload.get('passenger_count', 1)
     if type(count) is not int or not 1 <= count <= 6:
         raise ValueError("Choose between one and six passengers.")
-    query = UserQuery(origin, destination, date, travel_class,
-                      travel_class is not None, transfers, count, tolerance,
-                      region=None if config.SEARCH_REGION == 'ALL' else config.SEARCH_REGION)
+    return UserQuery(origin, destination, date, travel_class,
+                     travel_class is not None, transfers, count, tolerance,
+                     region=None if config.SEARCH_REGION == 'ALL' else config.SEARCH_REGION)
+
+
+def algorithms(system, payload):
+    """BFS vs UCS vs A* on the user's own query, in one search agent's space.
+
+    ``mode`` picks the agent: ``same_train`` (direct rides and seat changes)
+    or ``different_train`` (connections). See :mod:`src.explain`.
+    """
+    query = query_from_payload(system, payload)
+    mode = payload.get("mode", "same_train")
+    if mode not in AGENT_FOR_MODE:
+        raise ValueError(f"mode must be one of {', '.join(AGENT_FOR_MODE)}.")
+    return compare_algorithms(system.store, system.heuristic, query, mode)
+
+
+def search(system, payload):
+    """Validate browser input and expose only presentation data, not search states."""
+    query = query_from_payload(system, payload)
+    date, count = query.travel_date, query.passenger_count
     search_id = uuid.uuid4().hex[:12]
     trace = TraceRecorder()
     rec, seconds = resolve_timed(system, query, trace=trace)
@@ -275,7 +300,32 @@ def meta(system):
             "window_days": WINDOW_DAYS,
             "min_seat_change_minutes": MIN_SEAT_CHANGE,
             "min_train_change_minutes": MIN_TRAIN_CHANGE,
-            "trains": len(trains)}
+            "trains": len(trains),
+            "model": model_description()}
+
+
+def model_description():
+    """Every parameter the "How SplitRail decided" view states, read from config.
+
+    The interface never types a weight, a threshold or a limit into its text:
+    it renders these values. Change ``src/config.py`` (or the SPLITRAIL_*
+    environment overrides) and the PEAS panel, the scoring formula and the
+    search description all change with it.
+    """
+    return {
+        "weights": dict(WEIGHTS),
+        "min_seat_change_minutes": MIN_SEAT_CHANGE,
+        "min_train_change_minutes": MIN_TRAIN_CHANGE,
+        "max_transfers": 2,
+        "max_journey_days": config.MAX_JOURNEY_DAYS,
+        "agent_search_limit": {"expansions": config.MAX_SEARCH_EXPANSIONS,
+                               "seconds": config.SEARCH_SECONDS},
+        "comparison_search_limit": {"expansions": EXPLAIN_EXPANSIONS,
+                                    "seconds": EXPLAIN_SECONDS},
+        "inventory_profile": config.DEFAULT_INVENTORY_PROFILE,
+        "search_agents": list(AGENT_FOR_MODE.values()),
+        "evaluator_agents": ["SeatTransferAgent", "FareTimeAgent"],
+    }
 
 
 def _booking_json(booking):
@@ -457,6 +507,7 @@ def make_handler(system):
         def do_POST(self):
             path = urlparse(self.path).path
             handlers = {"/api/search": search, "/api/direct": direct_trains,
+                        "/api/algorithms": algorithms,
                         "/api/bookings": create_booking, "/api/book-itinerary": book_itinerary}
             if path not in handlers:
                 return self.send(404, {"error": "Not found"})
@@ -480,6 +531,7 @@ def make_handler(system):
 #: address a file outside this directory.
 STATIC_FILES = {"/": ("index.html", "text/html; charset=utf-8"),
                 "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                "/explain.js": ("explain.js", "text/javascript; charset=utf-8"),
                 "/style.css": ("style.css", "text/css; charset=utf-8")}
 
 

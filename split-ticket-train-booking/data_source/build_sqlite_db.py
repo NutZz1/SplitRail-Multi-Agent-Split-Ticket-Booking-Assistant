@@ -42,6 +42,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -160,8 +161,13 @@ def build(out_path: Path, start: dt.date | None = None, *, operational_only: boo
         _build(target, start, operational_only=operational_only, network_profile=network_profile)
         backup = out_path.with_suffix(out_path.suffix + '.pre-rebuild.bak')
         if out_path.exists() and not backup.exists():
-            with sqlite3.connect(out_path.resolve().as_uri() + '?mode=ro', uri=True) as source:
-                with sqlite3.connect(backup) as copy:
+            # closing(), not a bare `with sqlite3.connect(...)`: the connection's
+            # own context manager only commits/rolls back and leaves the file
+            # handle OPEN. On Windows an open handle makes the os.replace below
+            # fail with "Access is denied", so web.py crashed on startup every
+            # time the booking window rolled.
+            with closing(sqlite3.connect(out_path.resolve().as_uri() + '?mode=ro', uri=True)) as source:
+                with closing(sqlite3.connect(backup)) as copy:
                     source.backup(copy)
         os.replace(target, out_path)
     finally:

@@ -67,6 +67,10 @@ class SearchEffort:
     truncated: bool = False
     seat_checks: int = 0
     rejections: dict[str, int] = field(default_factory=dict)
+    #: Candidate itineraries this agent proposed to the coordinator. Excluded
+    #: from equality like the other telemetry, so recommendation comparisons
+    #: elsewhere are unaffected by its addition.
+    candidates: int = field(default=0, compare=False)
 
     def describe(self) -> str:
         return f"{self.agent_name} searched {self.nodes_expanded} state(s), {'found' if self.found else 'no'} itinerary"

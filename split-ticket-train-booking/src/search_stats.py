@@ -25,6 +25,21 @@ from dataclasses import dataclass, field
 from src.state import JourneyState
 
 
+def search_budget(limit_expansions: int | None = None,
+                  limit_seconds: float | None = None) -> tuple[int, float]:
+    """``(max expansions, max seconds)`` shared by BFS, UCS and A*.
+
+    One budget for all three algorithms is what makes their expansion counts
+    comparable: a comparison in which one algorithm may run forever and the
+    others stop at 6,000 nodes measures the limit, not the algorithm.
+    ``None`` means the engine-wide default from :mod:`src.config`; read at
+    call time so an environment override applies without a restart.
+    """
+    from src.config import MAX_SEARCH_EXPANSIONS, SEARCH_SECONDS
+    return (MAX_SEARCH_EXPANSIONS if limit_expansions is None else limit_expansions,
+            SEARCH_SECONDS if limit_seconds is None else limit_seconds)
+
+
 @dataclass
 class SearchStats:
     seat_checks: int = 0

@@ -18,7 +18,7 @@ from collections import deque
 
 from src.data_store import RailDataStore
 from src.goal import is_goal
-from src.search_stats import SearchStats
+from src.search_stats import SearchStats, search_budget
 from src.state import JourneyState, UserQuery, initial_state
 from src.successors import close_final_ticket, get_successors
 
@@ -27,14 +27,22 @@ SuccessorsFn = Callable[[JourneyState, UserQuery, RailDataStore], list[JourneySt
 
 
 def bfs_search(
-    query: UserQuery, store: RailDataStore, successors_fn: SuccessorsFn = get_successors
+    query: UserQuery, store: RailDataStore, successors_fn: SuccessorsFn = get_successors,
+    *, limit_expansions: int | None = None, limit_seconds: float | None = None,
 ) -> tuple[JourneyState | None, SearchStats]:
     """FIFO breadth-first search. Returns ``(goal_state, stats)`` or ``(None, stats)``.
 
     ``successors_fn`` selects the move generator (default: same-train).
+
+    Bounded by the same budget as A* (``src.config.MAX_SEARCH_EXPANSIONS`` /
+    ``SEARCH_SECONDS`` unless overridden). BFS used to be unbounded, which was
+    harmless on the six-train data set but on the full Kerala graph could run
+    for minutes. Hitting the budget sets ``stats.truncated``: the search
+    stopped, it did not prove that no journey exists.
     """
     stats = SearchStats(algorithm="BFS")
     t0 = time.perf_counter()
+    max_expanded, max_seconds = search_budget(limit_expansions, limit_seconds)
 
     start = initial_state(query)
     frontier: deque[JourneyState] = deque([start])
@@ -43,6 +51,9 @@ def bfs_search(
     stats.note_frontier(1)
 
     while frontier:
+        if stats.nodes_expanded >= max_expanded or time.perf_counter() - t0 >= max_seconds:
+            stats.truncated = True
+            break
         state = frontier.popleft()
         if is_goal(state, query):
             stats.finish_found(state, parents, finalized=close_final_ticket(state, query, store))

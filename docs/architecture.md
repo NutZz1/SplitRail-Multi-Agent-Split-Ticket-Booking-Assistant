@@ -64,6 +64,18 @@ search uses the existing `astar_search_k` with `SeatSuccessors`, so A* is on the
 actual request path. A regression verifies A* and UCS both find 340 moving minutes
 for the same physical-seat SBC→MAS graph.
 
+All three share one search budget (`search_stats.search_budget`, defaulting to
+`MAX_SEARCH_EXPANSIONS` / `SEARCH_SECONDS`). BFS and UCS used to be unbounded,
+which on the 265-train Kerala graph let a single comparison run for minutes. A
+search that stops at the budget reports `truncated`, never "no route".
+`src/explain.py` runs all three on the user's query with the same
+`SeatSuccessors` and a smaller interactive budget, recording the order each
+expands nodes in; the browser's *How SplitRail decided* view renders it. Its
+tests assert the textbook properties on real data: UCS and A* agree on the
+optimum, BFS is never cheaper, A* expands no more than UCS, and BFS depth, UCS
+`g` and A* `f` are each non-decreasing along their own expansion order — the
+last being the observable sign that the heuristic is consistent.
+
 `h(station)` is reverse-Dijkstra distance to the destination in the relaxed
 station graph. Every allowed ticket costs the sum of its consecutive-halt moving
 times. Every corresponding relaxed edge costs at most that segment's moving time.

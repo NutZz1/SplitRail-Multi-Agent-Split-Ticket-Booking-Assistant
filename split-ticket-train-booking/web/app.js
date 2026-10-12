@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let options = [], directTrains = [], lastQuery = null, busy = false, initialSearch = true, demoTrainCount = 31;
+let options = [], directTrains = [], lastQuery = null, busy = false, initialSearch = true, demoTrainCount = 31, activeBookingCount = 0;
 const stationNames = {};
 const stationCoverage = {};
 const nameOf = code => stationNames[code] || code;
@@ -198,7 +198,8 @@ async function loadBookings(){
     const response = await fetch('/api/bookings?status=');
     if(!response.ok) throw new Error();
     const {bookings} = await response.json();
-    $('bookings-count').textContent = bookings.length ? `${bookings.filter(b=>b.status==='ACTIVE').length} active` : '';
+    activeBookingCount = bookings.filter(b=>b.status==='ACTIVE').length;
+    $('bookings-count').textContent = bookings.length ? `${activeBookingCount} active` : '';
     $('bookings-list').innerHTML = bookings.length ? bookings.map(b=>
       `<article class="direct-row booking-row"><div class="direct-train"><strong>${escapeHTML(b.train_number)}</strong><span>${escapeHTML(nameOf(b.from_station))} → ${escapeHTML(nameOf(b.to_station))}</span></div><div class="direct-times"><span>${escapeHTML(b.coach_code)} · ${escapeHTML((b.seat_numbers||[]).join(', ')||'Legacy unassigned')}</span><i>·</i><span>${escapeHTML(b.travel_class||'—')}</span></div><div class="direct-meta"><span>${escapeHTML(b.reference)} · ${escapeHTML(b.status)}</span><span>${escapeHTML(b.passenger_name||'Passenger')} · ${money(b.fare)}</span><span>${escapeHTML(b.departure||b.run_date)} → ${escapeHTML(b.arrival||'')}</span>${b.status==='ACTIVE'?`<button class="cancel-button" data-cancel="${escapeHTML(b.id)}">Cancel leg</button>`:''}</div></article>`
     ).join('') : '<p class="direct-empty">Nothing held yet. Reserve a berth on any journey below to see this date’s availability change.</p>';
@@ -291,6 +292,8 @@ async function rerun(message){
     const listing=await fetch('/api/direct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastQuery)});
     if(!listing.ok) throw new Error('Could not refresh train availability. Search again.');
     renderDirect(await listing.json()); renderOptions();
+    // A booking changed the inventory: the explanation must follow it.
+    window.SplitRailExplain?.show(result,lastQuery,activeBookingCount);
   }catch(error){ $('status').className='status error';$('status').textContent=message+' '+error.message;return; }
   $('status').className='status'; $('status').textContent=message;
 }
@@ -302,15 +305,17 @@ $('search-form').addEventListener('submit',async event=>{
   event.preventDefault();if(busy)return;
   const query={origin:$('origin').value.trim().toUpperCase(),destination:$('destination').value.trim().toUpperCase(),date:$('date').value,travel_class:$('travel-class').value,max_transfers:Number($('max-transfers').value),seat_change_tolerance:$('seat-change-tolerance').value,passenger_count:Number($('passengers').value)};
   if(query.origin===query.destination){$('status').className='status error';$('status').textContent='Choose two different stations for your journey.';$('destination').focus();return;}
-  busy=true;$('search-button').disabled=true;$('search-button').innerHTML='Finding journeys…';$('status').className='status';$('status').innerHTML='<span class="loading-icon" aria-hidden="true"></span> Exploring routes and comparing time, fare, and transfer comfort…';$('results').setAttribute('aria-busy','true');$('results').innerHTML='<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';$('search-summary').hidden=true;$('sort-control').hidden=true;directTrains=[];
+  busy=true;$('search-button').disabled=true;$('search-button').innerHTML='Finding journeys…';$('status').className='status';$('status').innerHTML='<span class="loading-icon" aria-hidden="true"></span> Exploring routes and comparing time, fare, and transfer comfort…';$('results').setAttribute('aria-busy','true');$('results').innerHTML='<div class="skeleton" aria-hidden="true"></div><div class="skeleton" aria-hidden="true"></div>';window.SplitRailExplain?.hide();$('sort-control').hidden=true;directTrains=[];
   try{
     const post=path=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(query)});
     const [response,directResponse]=await Promise.all([post('/api/search'),post('/api/direct').catch(()=>null)]);
     const result=await response.json();if(!response.ok)throw new Error(result.error||'The search could not be completed.');
     if(directResponse&&directResponse.ok)renderDirect(await directResponse.json());else directTrains=[];
     options=result.options;lastQuery=query;renderOptions();if(!initialSearch&&window.matchMedia('(max-width:720px)').matches)document.querySelector('.results-section').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});$('status').textContent=result.truncated?'Search limit reached. These are the valid options found so far; narrow the route or transfer limit to search further.':result.failure_reason?`No matching itinerary: ${result.failure_reason}`:'';
-    $('summary-content').innerHTML=`<p>Search ${escapeHTML(result.search_id)} · A* with minimum remaining moving-time heuristic</p><p>${result.considered} candidates considered · ${result.duplicates} duplicates merged · ${result.pruned} pruned by constraints · ${result.seconds.toFixed(2)}s search time</p>${result.effort.map(e=>`<p><strong>${escapeHTML(e.agent_name)}</strong> explored ${e.nodes_expanded.toLocaleString()} states in ${(e.seconds||0).toFixed(2)}s · ${e.truncated?'Search limit reached':e.found?'Itinerary found':'No itinerary found'}</p>`).join('')}<p>Results are evaluated for fare, time, and transfer comfort, then ranked by the coordinator. This is a summary of completed work, not a live negotiation trace.</p>`;$('search-summary').hidden=false;
-  }catch(error){options=[];lastQuery=null;$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';$('results-subtitle').textContent='We couldn’t complete this search.';}
+    // "How SplitRail decided" renders from this same result object, so it
+    // can never describe a different search than the cards above it.
+    window.SplitRailExplain?.show(result,query,activeBookingCount);
+  }catch(error){options=[];lastQuery=null;window.SplitRailExplain?.hide();$('status').className='status error';$('status').textContent=error.message;$('results').innerHTML=empty('Let’s try that again.','Check your connection and search details, then try again.');bindAdjust();$('results-title').textContent='Your journey is still out there.';$('results-subtitle').textContent='We couldn’t complete this search.';}
   finally{initialSearch=false;busy=false;$('search-button').disabled=false;$('search-button').innerHTML='Find journeys <span>→</span>';$('results').setAttribute('aria-busy','false');}
 });
 /** Move a sample route's date into the current booking window, keeping its weekday.
@@ -326,5 +331,5 @@ function reanchor(date, min, max){
     if(d.getDay()===wanted)return d.toISOString().slice(0,10);
   return min;
 }
-async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();$('kerala-coverage').textContent=`${meta.station_count} Kerala stations · ${meta.covered_station_count} with timetable coverage · ${meta.trains} simulated train services`;$('transfer-policy').textContent=`Seat changes: ${meta.min_seat_change_minutes} min halt · Train changes: ${meta.min_train_change_minutes} min connection`;if(meta.trains){demoTrainCount=meta.trains;$('demo-train-count').textContent=`${demoTrainCount} demo trains`;}for(const code of Object.keys(stationNames))delete stationNames[code];for(const s of meta.stations){stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());stationCoverage[s.code]=s.bookable;}if(meta.dates){const[min,max]=meta.dates;[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${min} to ${max} (${meta.window_days||10} days from today, rolling).`;$('date').value=reanchor($('date').value,min,max);for(const button of document.querySelectorAll('[data-route]')){const[from,to,date]=button.dataset.route.split(',');button.dataset.route=[from,to,reanchor(date,min,max)].join(',');}}updateStationNames();await loadBookings();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
+async function initialize(){try{const response=await fetch('/api/meta');if(!response.ok)throw new Error('Could not load demo coverage.');const meta=await response.json();window.SplitRailExplain?.setMeta(meta);$('kerala-coverage').textContent=`${meta.station_count} Kerala stations · ${meta.covered_station_count} with timetable coverage · ${meta.trains} simulated train services`;$('transfer-policy').textContent=`Seat changes: ${meta.min_seat_change_minutes} min halt · Train changes: ${meta.min_train_change_minutes} min connection`;if(meta.trains){demoTrainCount=meta.trains;$('demo-train-count').textContent=`${demoTrainCount} demo trains`;}for(const code of Object.keys(stationNames))delete stationNames[code];for(const s of meta.stations){stationNames[s.code]=s.name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());stationCoverage[s.code]=s.bookable;}if(meta.dates){const[min,max]=meta.dates;[$('date').min,$('date').max]=meta.dates;$('date-coverage').textContent=`Demo travel dates: ${min} to ${max} (${meta.window_days||10} days from today, rolling).`;$('date').value=reanchor($('date').value,min,max);for(const button of document.querySelectorAll('[data-route]')){const[from,to,date]=button.dataset.route.split(',');button.dataset.route=[from,to,reanchor(date,min,max)].join(',');}}updateStationNames();await loadBookings();$('search-form').requestSubmit();}catch(error){$('status').className='status error';$('status').textContent='Demo data could not be loaded. Refresh the page to reconnect.';}}
 initialize();

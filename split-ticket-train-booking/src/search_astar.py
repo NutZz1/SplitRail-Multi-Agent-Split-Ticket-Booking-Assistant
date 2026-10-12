@@ -28,7 +28,7 @@ from src.data_store import RailDataStore
 from src.goal import is_goal
 from src.heuristic import RailHeuristic
 from src.proposal import itinerary_signature
-from src.search_stats import SearchStats
+from src.search_stats import SearchStats, search_budget
 from src.state import JourneyState, UserQuery, initial_state
 from src.successors import close_final_ticket, get_successors
 
@@ -47,6 +47,7 @@ def astar_search(
     store: RailDataStore,
     heuristic: RailHeuristic,
     successors_fn: SuccessorsFn = get_successors,
+    *, limit_expansions: int | None = None, limit_seconds: float | None = None,
 ) -> tuple[JourneyState | None, SearchStats]:
     """A* search with the rail-graph heuristic. Returns ``(goal_state, stats)`` or ``(None, stats)``.
 
@@ -55,9 +56,11 @@ def astar_search(
     :func:`src.successors_different_train.get_successors_different_train`
     to search across trains. The search loop itself is identical.
 
-    This is exactly :func:`astar_search_k` with ``k=1``.
+    This is exactly :func:`astar_search_k` with ``k=1``. The ``limit_*``
+    arguments are the same budget BFS and UCS take (``search_budget``).
     """
-    goals, stats = astar_search_k(query, store, heuristic, k=1, successors_fn=successors_fn)
+    goals, stats = astar_search_k(query, store, heuristic, k=1, successors_fn=successors_fn,
+                                  limit_expansions=limit_expansions, limit_seconds=limit_seconds)
     return (goals[0] if goals else None), stats
 
 
@@ -69,6 +72,7 @@ def astar_search_k(
     successors_fn: SuccessorsFn = get_successors,
     signature_fn: Callable[[JourneyState], Hashable] = lambda g: itinerary_signature(g.tickets_so_far),
     max_expansions: int = DEFAULT_MAX_EXPANSIONS,
+    *, limit_expansions: int | None = None, limit_seconds: float | None = None,
 ) -> tuple[list[JourneyState], SearchStats]:
     """k-best A*: the up-to-``k`` cheapest *distinct* goal states, cheapest first.
 
@@ -103,6 +107,7 @@ def astar_search_k(
         raise ValueError("k must be >= 1")
     stats = SearchStats(algorithm="A*")
     t0 = time.perf_counter()
+    budget_expansions, budget_seconds = search_budget(limit_expansions, limit_seconds)
     goal_station = query.destination_station
 
     def f(state: JourneyState) -> float:
@@ -120,8 +125,7 @@ def astar_search_k(
     seen_signatures: set[Hashable] = set()
 
     while frontier:
-        from src.config import MAX_SEARCH_EXPANSIONS, SEARCH_SECONDS
-        if stats.nodes_expanded >= MAX_SEARCH_EXPANSIONS or time.perf_counter() - t0 >= SEARCH_SECONDS:
+        if stats.nodes_expanded >= budget_expansions or time.perf_counter() - t0 >= budget_seconds:
             stats.truncated = True
             break
         _, _, state = heapq.heappop(frontier)

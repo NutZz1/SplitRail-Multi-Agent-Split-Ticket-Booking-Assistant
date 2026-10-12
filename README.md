@@ -83,6 +83,28 @@ recommendation. Results are grouped by train and run date: each train shows
 its direct availability, seat-change options and onward connections together.
 All supported direct services appear, including those with no confirmed seat. See [architecture](docs/architecture.md).
 
+## Explaining the decision
+
+Every search ends with a **How SplitRail decided** section (also linked as
+*How it decided* in the header). It has five steps, each tagged with the review
+rubric it answers:
+
+| Step | Shows |
+|---|---|
+| 1 · The problem | PEAS and the environment's properties, with the live weights, window and coverage |
+| 2 · The search | The problem as a search problem, then **BFS, UCS and A\* run on your query**: nodes expanded, journey cost, which found the optimum, the order each expanded nodes in, and a live admissibility check |
+| 3 · The agents | The coordinator and four agents as a flow, with this search's counts and the coordinator's real message log |
+| 4 · The decision | The score formula and each top option's score split into time, fare, comfort, waiting and risk |
+| 5 · The build | The tools chosen and where each concept lives in the code |
+
+Nothing in it is typed in. Weights and thresholds come from `src/config.py`
+through `/api/meta`; the comparison is measured by `POST /api/algorithms`
+(`src/explain.py`), which runs all three algorithms on the same successor
+function the agents use, under one shared budget. Tests fail if `docs/peas.md`
+disagrees with the configured weights or if the page names a file that no
+longer exists. See the [presentation guide](docs/presentation-guide.md) for a
+rubric-by-rubric walkthrough and routes where the algorithms clearly differ.
+
 ## Booking consistency
 
 A physical seat is identified by **train + origin run date + coach + seat number**.
@@ -165,6 +187,7 @@ silently reseed existing reservations.
 .venv/bin/python -m pip install 'ruff==0.15.3'
 .venv/bin/ruff check .
 node --check web/app.js
+node --check web/explain.js
 .venv/bin/python -m compileall -q src web.py cli.py tools
 .venv/bin/python tools/benchmark_search.py
 ```

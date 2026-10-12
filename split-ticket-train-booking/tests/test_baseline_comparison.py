@@ -2,10 +2,10 @@
 Ablation: src.baseline_single_agent vs CoordinatorAgent, on the same
 standard demo queries used throughout tests/test_scenarios.py.
 
-This is the test that backs docs/ablation.md's numbers. It asserts
-equivalence (same top-ranked itinerary) and reports wall-clock for both --
-the baseline is expected to be FASTER, which is the honest result and the
-point of the ablation, not a regression to chase away.
+This is the test that backs docs/ablation.md. It asserts EQUIVALENCE (same
+ranked itineraries, same scores) and only reports wall-clock for both: which
+orchestration is faster is machine- and workload-dependent, so it is measured
+by tools/benchmark_search.py rather than asserted here.
 """
 
 from __future__ import annotations
@@ -71,22 +71,33 @@ def test_baseline_matches_coordinator_top_ranked_itinerary(coordinator, store, h
            {o.candidate.signature for o in rec_multi.ranked_options}, label
 
 
-def test_baseline_is_faster_than_the_multi_agent_coordinator_on_average(coordinator, store, heuristic):
-    """The honest ablation result: one process avoiding asyncio.gather(),
-    worker-process, and event-loop overhead is faster than the multi-agent
-    path on these small, single-machine demo queries. See docs/ablation.md
-    for where the multi-agent architecture wins instead (graceful
-    degradation under a Task 4-style failure, and surfacing the fare-vs-risk
-    trade-off via the Pareto front)."""
-    found_queries = [q for _, q in STANDARD_QUERIES]
-    base_total = 0.0
-    multi_total = 0.0
-    for query in found_queries:
-        _, base_seconds = resolve_single_agent(query, store, heuristic)
-        t0 = time.perf_counter()
-        asyncio.run(coordinator.resolve(query))
-        multi_total += time.perf_counter() - t0
-        base_total += base_seconds
-    print(f"\ntotals over {len(found_queries)} queries: baseline {base_total * 1000:.1f} ms, "
+def test_baseline_and_coordinator_timings_are_reported_not_ranked(coordinator, store, heuristic):
+    """Report both wall-clock totals; do NOT assert which is faster.
+
+    This test used to assert the single-agent baseline was faster. That was
+    never a stable property: docs/ablation.md now measures the coordinator as
+    1.09-1.12x FASTER, this suite saw both outcomes on different machines,
+    and the old loop always timed the baseline first so the coordinator
+    inherited warm caches. Which orchestration wins depends on the machine and
+    the workload, so a unit test cannot assert it either way.
+
+    What IS stable -- and what the ablation actually relies on -- is that both
+    return the same ranked answer; the parametrised test above asserts that.
+    For a real measurement (warm-up, alternating order, medians) run
+    ``tools/benchmark_search.py``.
+    """
+    base_total = multi_total = 0.0
+    for i, (_, query) in enumerate(STANDARD_QUERIES):
+        # Alternate who goes first so neither consistently gets warm caches.
+        order = ("base", "multi") if i % 2 == 0 else ("multi", "base")
+        for who in order:
+            if who == "base":
+                _, seconds = resolve_single_agent(query, store, heuristic)
+                base_total += seconds
+            else:
+                t0 = time.perf_counter()
+                asyncio.run(coordinator.resolve(query))
+                multi_total += time.perf_counter() - t0
+    print(f"\ntotals over {len(STANDARD_QUERIES)} queries: baseline {base_total * 1000:.1f} ms, "
           f"multi-agent {multi_total * 1000:.1f} ms")
-    assert base_total < multi_total
+    assert base_total > 0 and multi_total > 0
