@@ -22,12 +22,18 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class TraceEvent:
     """One recorded coordination event: a monotonic sequence number and a
-    millisecond offset from the recorder's construction (== resolve() start)."""
+    millisecond offset from the recorder's construction (== resolve() start).
+
+    ``agent`` names who acted, as structured data, so an interface can group
+    and draw the interaction without parsing ``detail`` -- which stays the
+    human-readable sentence ``cli.py --trace`` prints.
+    """
 
     seq: int
     offset_ms: float
     kind: str
     detail: str
+    agent: str | None = None
 
     def describe(self) -> str:
         return f"{self.seq:>3}  {self.offset_ms:>8.1f} ms  {self.kind:<28} {self.detail}"
@@ -42,10 +48,10 @@ class TraceRecorder:
         self._seq = 0
         self.events: list[TraceEvent] = []
 
-    def record(self, kind: str, detail: str = "") -> None:
+    def record(self, kind: str, detail: str = "", agent: str | None = None) -> None:
         self._seq += 1
         offset_ms = (time.perf_counter() - self._t0) * 1000.0
-        self.events.append(TraceEvent(self._seq, offset_ms, kind, detail))
+        self.events.append(TraceEvent(self._seq, offset_ms, kind, detail, agent))
 
     def table(self) -> str:
         """A readable, ordered table -- what ``cli.py --trace`` prints."""

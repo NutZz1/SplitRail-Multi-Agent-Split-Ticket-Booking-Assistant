@@ -159,7 +159,8 @@ class CoordinatorAgent:
         method takes exactly the code path it took before tracing existed."""
         if trace is not None:
             trace.record("task_announced",
-                         f"{query.origin_station} -> {query.destination_station} on {query.travel_date}")
+                         f"{query.origin_station} -> {query.destination_station} on {query.travel_date}",
+                         agent=self.name)
 
         # ---- Stage 1: both searches in parallel ----------------------------
         same_query = same_train_query(query)
@@ -170,7 +171,8 @@ class CoordinatorAgent:
                 trace.record("proposal_returned",
                              f"{p.agent_name}: {len(p.candidates)} candidate(s), "
                              f"{p.search_stats.nodes_expanded} node(s) expanded, "
-                             f"{p.search_stats.wall_clock_seconds * 1000:.1f} ms")
+                             f"{p.search_stats.wall_clock_seconds * 1000:.1f} ms",
+                             agent=p.agent_name)
 
         if not same_p.found and not diff_p.found:
             # Short-circuit: nothing to score, Stage 2 is never entered.
@@ -192,13 +194,14 @@ class CoordinatorAgent:
         pooled = dedupe_across_agents(pooled)
         merged = total - len(pooled)
         if trace is not None:
-            trace.record("duplicates_merged", f"{merged} of {total} candidate(s) merged")
+            trace.record("duplicates_merged", f"{merged} of {total} candidate(s) merged", agent=self.name)
 
         # ---- defensive hard-constraint re-check ---------------------------
         survivors = [c for c in pooled if self._passes_hard_constraints(c, query)]
         pruned = len(pooled) - len(survivors)
         if trace is not None:
-            trace.record("hard_constraint_prunes", f"{pruned} of {len(pooled)} candidate(s) pruned")
+            trace.record("hard_constraint_prunes", f"{pruned} of {len(pooled)} candidate(s) pruned",
+                         agent=self.name)
         if not survivors:
             return FinalRecommendation(
                 query=query,
@@ -261,11 +264,13 @@ class CoordinatorAgent:
         ranked = rank_candidates(survivors, transfer_scores, fare_scores, degraded_agents)
         if trace is not None:
             n_front = sum(1 for r in ranked if r.pareto_optimal)
-            trace.record("pareto_front_computed", f"{n_front} of {len(ranked)} candidate(s) on the front")
+            trace.record("pareto_front_computed", f"{n_front} of {len(ranked)} candidate(s) on the front",
+                         agent=self.name)
             best = ranked[0] if ranked else None
             trace.record("final_ranking",
                          f"{len(ranked)} option(s); winner: {best.candidate.agent_name} "
-                         f"score {best.final_score:.1f}" if best is not None else "no survivors")
+                         f"score {best.final_score:.1f}" if best is not None else "no survivors",
+                         agent=self.name)
         return FinalRecommendation(
             query=query,
             found=True,
@@ -294,9 +299,10 @@ async def _traced_evaluate(agent, candidate: CandidateItinerary, trace: TraceRec
         result = await agent.evaluate(candidate)
     except BaseException as exc:
         trace.record("stage2_evaluation_completed",
-                     f"{agent.name} on {candidate.agent_name} candidate FAILED: {exc!r}")
+                     f"{agent.name} on {candidate.agent_name} candidate FAILED: {exc!r}", agent=agent.name)
         raise
-    trace.record("stage2_evaluation_completed", f"{agent.name} on {candidate.agent_name} candidate: ok")
+    trace.record("stage2_evaluation_completed", f"{agent.name} on {candidate.agent_name} candidate: ok",
+                 agent=agent.name)
     return result
 
 
@@ -340,7 +346,8 @@ def search_effort(*proposals: ItineraryProposal) -> tuple[SearchEffort, ...]:
     """Passthrough of each Stage-1 proposal's existing SearchStats; nothing is recomputed."""
     return tuple(SearchEffort(p.agent_name, p.search_stats.nodes_expanded, p.found,
                               p.search_stats.wall_clock_seconds, p.search_stats.truncated,
-                              p.search_stats.seat_checks, p.search_stats.rejections) for p in proposals)
+                              p.search_stats.seat_checks, p.search_stats.rejections,
+                              candidates=len(p.candidates)) for p in proposals)
 
 
 def dedupe_across_agents(candidates: list[CandidateItinerary]) -> list[CandidateItinerary]:

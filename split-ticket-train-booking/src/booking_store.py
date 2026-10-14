@@ -18,7 +18,7 @@ import datetime as dt
 import os
 import json
 import logging
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -195,7 +195,7 @@ class BookingStore:
                 backup = self.path.with_suffix(self.path.suffix + '.pre-seats.bak')
                 if not backup.exists():
                     self._conn.commit()
-                    with sqlite3.connect(backup) as copy:
+                    with closing(sqlite3.connect(backup)) as copy:
                         self._conn.backup(copy)
             for name, declaration in {"seat_numbers_json": "TEXT NOT NULL DEFAULT '[]'", "journey_id": "TEXT",
                                       "fare": "REAL", "departure": "TEXT", "arrival": "TEXT"}.items():
@@ -211,7 +211,7 @@ class BookingStore:
             if version and version[0] == 'segment-v1':
                 backup = self.path.with_suffix(self.path.suffix + '.pre-busy.bak')
                 if not backup.exists():
-                    with sqlite3.connect(backup) as copy:
+                    with closing(sqlite3.connect(backup)) as copy:
                         self._conn.backup(copy)
             with self.transaction():
                 self._conn.execute('CREATE TABLE IF NOT EXISTS inventory_run_profiles '
