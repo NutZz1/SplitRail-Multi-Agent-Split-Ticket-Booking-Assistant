@@ -20,15 +20,21 @@ carries a small orange tag naming the rubric it answers.
 
 ### Routes where the algorithms clearly differ
 
-Set **Travel class = All classes**. Verified on every day of the 12–21 October
+Set **Travel class = All classes**. Verified on every day of the 14–23 October
 2026 window on the default Kerala data:
 
 | Route | Max transfers | Search tab | What happens |
 |---|---|---|---|
-| **TCR → CAN** | 2 | Same-train agent | BFS ≈ 6 nodes but 61 min worse; UCS ≈ 270 nodes; **A\* ≈ 30**, same optimum. Fast (0.3 s). **Use this one first.** |
-| **TVC → CAN** | 1 | Same-train agent | BFS 129 min worse; A\* about half of UCS's work. |
-| **KYJ → PGT** | 1 | Different-train agent | **UCS runs out of budget** with no answer; A\* finds the optimum. Takes ~5 s. |
+| **TCR → CAN** | 1 | Same-train agent | BFS ≈ 7 nodes but 61 min worse; UCS ≈ 100 nodes; **A\* ≈ 30**, same optimum — about 3× fewer. Fast (0.3 s). **Use this one first.** |
+| **TCR → AWY** | 2 | Different-train agent | A genuine two-change search: BFS 55 min (not cheapest), **UCS runs out of budget with no answer**, A\* ≈ 15 nodes and the 44-min optimum. Takes ~4.5 s. |
+| **TVC → CAN** | 1 | Same-train agent | BFS 129 min worse; A\* about a third of UCS's work. |
 | **TCR → SRR** | 1 | Different-train agent | **A\* expands a single node** — the heuristic points straight at the answer. |
+
+The same-train agent never searches more than **one** seat change, whatever
+the transfer setting; the comparison applies the same cap and says so on
+screen. Journeys with **two** changes (three trains) come from the
+different-train agent — **NIL → CAN** with 2 transfers returns them, e.g.
+16350 NIL→SRR, 12431 SRR→CLT, 12217 CLT→CAN.
 
 On short routes (a single direct train) all three behave the same. The page
 says so; that is the honest result, not a bug.
@@ -64,7 +70,7 @@ observed; seats are simulated.
 
 ### Algorithmic modeling & search strategy — tab 2 · The search
 
-Search **TCR → CAN, 2 transfers**, open tab 2.
+Search **TCR → CAN, 1 transfer**, open tab 2.
 
 1. Point at the **formulation table**: state, initial state, actions, goal test,
    path cost g(n), heuristic h(n).
@@ -74,7 +80,7 @@ Search **TCR → CAN, 2 transfers**, open tab 2.
 2. Point at the **three cards**.
    > "Same query, same state space, same budget. BFS finishes after a handful of
    > nodes but its journey is an hour longer — it minimises tickets, not time.
-   > UCS finds the optimum but expands about 270 nodes. A\* finds the same
+   > UCS finds the optimum but expands about 100 nodes. A\* finds the same
    > optimum in about 30."
 3. Point at the **green admissibility line**: h(start) ≤ the true optimal cost,
    checked on this query.
@@ -85,8 +91,9 @@ Search **TCR → CAN, 2 transfers**, open tab 2.
 
    Find a row where UCS and A\* pick different stations and read out both g
    and f.
-5. Switch to **Different-train agent** on **KYJ → PGT** to show UCS stopping at
-   the budget while A\* still finishes.
+5. Search **TCR → AWY, 2 transfers**, switch to **Different-train agent**:
+   a genuine two-change search where UCS stops at the budget with no answer
+   while A\* finishes in about 15 nodes.
 
 ### Q&A & presentation mechanics
 

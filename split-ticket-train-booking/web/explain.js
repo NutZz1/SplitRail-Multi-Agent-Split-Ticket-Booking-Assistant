@@ -175,7 +175,10 @@
         <p class="algo-meta">${num(r.generated)} generated · frontier peak ${num(r.max_frontier)} · ${num(r.milliseconds)} ms${r.guarantees_cheapest ? '' : ' · <em>no optimality guarantee</em>'}</p>
       </article>`;
     }).join('');
-    return `<div class="algo-grid">${cards}</div>
+    const capped = cmp.requested_transfers > cmp.max_transfers
+      ? `<p class="xp-note">You allowed ${plural(cmp.requested_transfers, 'transfer')}; the ${esc(cmp.agent)} never searches more than ${plural(cmp.max_transfers, 'seat change')}, so this comparison searches exactly that space too.</p>`
+      : '';
+    return `${capped}<div class="algo-grid">${cards}</div>
       <p class="verdict">${verdict(cmp)}</p>
       ${admissibility(cmp)}
       <h4 class="xp-h">Which node does each algorithm expand next?</h4>

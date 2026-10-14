@@ -131,6 +131,28 @@ def test_one_budget_binds_all_three(store, heuristic):
         assert not run["cheapest"] or not run["truncated"]
 
 
+def test_same_train_comparison_searches_only_what_the_agent_searches(store, heuristic):
+    """The coordinator caps SameTrainSearchAgent at one seat change. A
+    comparison that ignored the cap would time journeys the app never offers."""
+    from src.agents.coordinator_agent import SAME_TRAIN_MAX_TRANSFERS_CAP
+
+    lo, _ = store.get_run_date_range()
+    query = UserQuery(ORIGIN, DESTINATION, dt.date.fromisoformat(lo), max_transfers=2)
+    result = compare_algorithms(store, heuristic, query, "same_train")
+    assert result["requested_transfers"] == 2
+    assert result["max_transfers"] == SAME_TRAIN_MAX_TRANSFERS_CAP
+    for run in result["runs"]:
+        assert len(run["legs"]) <= SAME_TRAIN_MAX_TRANSFERS_CAP + 1, run["algorithm"]
+        assert all(row["depth"] <= SAME_TRAIN_MAX_TRANSFERS_CAP + 1 for row in run["expansion_order"])
+
+
+def test_different_train_comparison_keeps_the_requested_transfers(store, heuristic):
+    lo, _ = store.get_run_date_range()
+    query = UserQuery(ORIGIN, DESTINATION, dt.date.fromisoformat(lo), max_transfers=2)
+    result = compare_algorithms(store, heuristic, query, "different_train", limit_expansions=50)
+    assert result["requested_transfers"] == result["max_transfers"] == 2
+
+
 def test_unknown_mode_is_rejected(store, heuristic):
     lo, _ = store.get_run_date_range()
     query = UserQuery(ORIGIN, DESTINATION, dt.date.fromisoformat(lo))

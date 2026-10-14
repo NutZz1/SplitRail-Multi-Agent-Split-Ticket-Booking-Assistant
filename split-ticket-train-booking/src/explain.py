@@ -36,6 +36,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Callable
 
+from src.agents.coordinator_agent import same_train_query
 from src.search_astar import astar_search
 from src.search_bfs import bfs_search
 from src.search_ucs import ucs_search
@@ -137,6 +138,13 @@ def compare_algorithms(
     """
     if mode not in AGENT_FOR_MODE:
         raise ValueError(f"mode must be one of {', '.join(AGENT_FOR_MODE)}.")
+    requested_transfers = query.max_transfers
+    if mode == "same_train":
+        # The coordinator never lets SameTrainSearchAgent search more than one
+        # seat change (same_train_query caps it). The comparison must search
+        # exactly the space that agent searches, or it would describe -- and
+        # time -- journeys the app can never offer.
+        query = same_train_query(query)
     budget = {"limit_expansions": limit_expansions, "limit_seconds": limit_seconds}
     runners = {
         "BFS": lambda fn: bfs_search(query, store, successors_fn=fn, **budget),
@@ -175,6 +183,9 @@ def compare_algorithms(
     return {
         "mode": mode,
         "agent": AGENT_FOR_MODE[mode],
+        # What the user asked for, and what this agent actually searched.
+        "requested_transfers": requested_transfers,
+        "max_transfers": query.max_transfers,
         "budget": {"expansions": limit_expansions, "seconds": limit_seconds},
         "heuristic": {
             "name": "fastest possible remaining time on the relaxed station graph",
